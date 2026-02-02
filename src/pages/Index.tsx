@@ -1,5 +1,6 @@
 import NeuralBackground from '@/components/ui/NeuralBackground';
 import SurveyForm from '@/components/survey/SurveyForm';
+import FloatingAdminButton from '@/components/FloatingAdminButton';
 
 const Index = () => {
   return (
@@ -18,6 +19,9 @@ const Index = () => {
           © 2026 AI App Development Course
         </p>
       </div>
+
+      {/* Floating Admin Button */}
+      <FloatingAdminButton />
     </div>
   );
 };

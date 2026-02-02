@@ -9,6 +9,8 @@ import EmojiRating from './EmojiRating';
 import ProgressIndicator from './ProgressIndicator';
 import ThankYouPage from './ThankYouPage';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const surveySchema = z.object({
   name: z.string().trim().min(1, 'กรุณากรอกชื่อ-นามสกุล').max(100, 'ชื่อยาวเกินไป'),
@@ -84,14 +86,29 @@ const SurveyForm = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const { error } = await supabase.from('responses').insert({
+        name: result.data.name,
+        email: result.data.email,
+        q1_score: result.data.q1,
+        q2_score: result.data.q2,
+        q3_score: result.data.q3,
+        q4_score: result.data.q4,
+        q5_score: result.data.q5,
+        comment: result.data.comment || null,
+      });
 
-    // For now, just log the data (will integrate with database later)
-    console.log('Survey submitted:', result.data);
+      if (error) throw error;
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error('Error submitting survey:', error);
+      toast.error('เกิดข้อผิดพลาด', {
+        description: 'ไม่สามารถส่งแบบประเมินได้ กรุณาลองใหม่อีกครั้ง',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
