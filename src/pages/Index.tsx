@@ -1,11 +1,22 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import NeuralBackground from '@/components/ui/NeuralBackground';
+import SurveyForm from '@/components/survey/SurveyForm';
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="relative min-h-screen">
+      {/* Background */}
+      <NeuralBackground />
+      
+      {/* Content */}
+      <div className="relative z-10 container py-8 sm:py-12 md:py-16 px-4">
+        <div className="glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl animate-slide-up">
+          <SurveyForm />
+        </div>
+        
+        {/* Footer */}
+        <p className="text-center text-muted-foreground text-xs sm:text-sm mt-8 opacity-60">
+          © 2026 AI App Development Course
+        </p>
       </div>
     </div>
   );
