@@ -8,14 +8,21 @@ import { Label } from '@/components/ui/label';
 import EmojiRating from './EmojiRating';
 import ProgressIndicator from './ProgressIndicator';
 import ThankYouPage from './ThankYouPage';
+import QRCodeShare from './QRCodeShare';
+import AnonymousToggle from './AnonymousToggle';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
 
-const surveySchema = z.object({
-  name: z.string().trim().min(1, 'กรุณากรอกชื่อ-นามสกุล').max(100, 'ชื่อยาวเกินไป'),
-  email: z.string().trim().email('กรุณากรอกอีเมลให้ถูกต้อง').max(255, 'อีเมลยาวเกินไป'),
+// Schema factory to handle anonymous mode
+const createSurveySchema = (isAnonymous: boolean) => z.object({
+  name: isAnonymous 
+    ? z.string().optional() 
+    : z.string().trim().min(1, 'กรุณากรอกชื่อ-นามสกุล').max(100, 'ชื่อยาวเกินไป'),
+  email: isAnonymous 
+    ? z.string().optional() 
+    : z.string().trim().email('กรุณากรอกอีเมลให้ถูกต้อง').max(255, 'อีเมลยาวเกินไป'),
   q1: z.number().min(1).max(5),
   q2: z.number().min(1).max(5),
   q3: z.number().min(1).max(5),
@@ -24,7 +31,16 @@ const surveySchema = z.object({
   comment: z.string().max(1000, 'ความคิดเห็นยาวเกินไป').optional(),
 });
 
-type SurveyData = z.infer<typeof surveySchema>;
+type SurveyData = {
+  name?: string;
+  email?: string;
+  q1?: number;
+  q2?: number;
+  q3?: number;
+  q4?: number;
+  q5?: number;
+  comment?: string;
+};
 
 const questions = [
   'ความเข้าใจเนื้อหาการเขียน App ด้วย AI',
@@ -46,6 +62,7 @@ const SurveyForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -138,7 +155,8 @@ const SurveyForm = () => {
     e.preventDefault();
     setErrors({});
 
-    // Validate
+    // Validate with appropriate schema based on anonymous mode
+    const surveySchema = createSurveySchema(isAnonymous);
     const result = surveySchema.safeParse(formData);
     
     if (!result.success) {
@@ -158,18 +176,33 @@ const SurveyForm = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from('responses').insert({
-        name: result.data.name,
-        email: result.data.email,
+      const responseData = {
+        name: isAnonymous ? 'ไม่ระบุตัวตน' : (result.data.name || ''),
+        email: isAnonymous ? 'anonymous@survey.local' : (result.data.email || ''),
         q1_score: result.data.q1,
         q2_score: result.data.q2,
         q3_score: result.data.q3,
         q4_score: result.data.q4,
         q5_score: result.data.q5,
         comment: result.data.comment || null,
-      });
+      };
+
+      const { error } = await supabase.from('responses').insert(responseData);
 
       if (error) throw error;
+
+      // Send email notification (non-blocking)
+      try {
+        await supabase.functions.invoke('notify-new-response', {
+          body: {
+            ...responseData,
+            is_anonymous: isAnonymous,
+          },
+        });
+      } catch (notifyError) {
+        // Don't fail the submission if notification fails
+        console.log('Notification skipped:', notifyError);
+      }
 
       // Clear draft after successful submission
       clearDraft();
@@ -192,6 +225,7 @@ const SurveyForm = () => {
     });
     setErrors({});
     setIsSubmitted(false);
+    setIsAnonymous(false);
     clearDraft();
   };
 
@@ -212,6 +246,10 @@ const SurveyForm = () => {
         <p className="text-muted-foreground text-sm sm:text-base">
           คอร์สเรียนการเขียน App ด้วย AI
         </p>
+        {/* QR Code Share Button */}
+        <div className="pt-2">
+          <QRCodeShare />
+        </div>
       </div>
 
       {/* Sticky Progress Bar - Feature #5 */}
@@ -279,54 +317,65 @@ const SurveyForm = () => {
           ข้อมูลผู้ประเมิน
         </h3>
         
-        <div className="space-y-2">
-          <Label htmlFor="name" className="text-foreground font-medium">
-            ชื่อ-นามสกุล <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="name"
-            type="text"
-            placeholder="กรอกชื่อ-นามสกุลของคุณ"
-            value={formData.name || ''}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            className={cn(
-              'bg-background/50 border-border/50 focus:border-primary input-glow transition-all',
-              errors.name && 'border-destructive'
-            )}
-          />
-          {errors.name && (
-            <p className="text-destructive text-sm flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" />
-              {errors.name}
-            </p>
-          )}
-        </div>
+        {/* Anonymous Mode Toggle */}
+        <AnonymousToggle 
+          isAnonymous={isAnonymous} 
+          onToggle={setIsAnonymous} 
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="email" className="text-foreground font-medium">
-            Email <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="example@email.com"
-            value={formData.email || ''}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            className={cn(
-              'bg-background/50 border-border/50 focus:border-primary input-glow transition-all',
-              errors.email && 'border-destructive'
-            )}
-          />
-          {errors.email && (
-            <p className="text-destructive text-sm flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" />
-              {errors.email}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            ข้อมูลนี้ใช้เพื่อพัฒนาคอร์สเรียนเท่านั้น
-          </p>
-        </div>
+        {/* Show name/email fields only when not anonymous */}
+        {!isAnonymous && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-foreground font-medium">
+                ชื่อ-นามสกุล <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="กรอกชื่อ-นามสกุลของคุณ"
+                value={formData.name || ''}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className={cn(
+                  'bg-background/50 border-border/50 focus:border-primary input-glow transition-all',
+                  errors.name && 'border-destructive'
+                )}
+              />
+              {errors.name && (
+                <p className="text-destructive text-sm flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.name}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-foreground font-medium">
+                Email <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="example@email.com"
+                value={formData.email || ''}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={cn(
+                  'bg-background/50 border-border/50 focus:border-primary input-glow transition-all',
+                  errors.email && 'border-destructive'
+                )}
+              />
+              {errors.email && (
+                <p className="text-destructive text-sm flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.email}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                ข้อมูลนี้ใช้เพื่อพัฒนาคอร์สเรียนเท่านั้น
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Submit Button */}
