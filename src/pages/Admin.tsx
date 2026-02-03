@@ -6,6 +6,7 @@ import NeuralBackground from '@/components/ui/NeuralBackground';
 import AdminHeader from '@/components/admin/AdminHeader';
 import StatsCards from '@/components/admin/StatsCards';
 import AverageChart from '@/components/admin/AverageChart';
+import DistributionChart from '@/components/admin/DistributionChart';
 import ResponsesTable from '@/components/admin/ResponsesTable';
 import ResponseDetailModal from '@/components/admin/ResponseDetailModal';
 import { Loader2 } from 'lucide-react';
@@ -83,15 +84,44 @@ const Admin = () => {
     return matchesSearch && matchesScore;
   });
 
+  // Calculate distribution for each question
+  const distribution: { [key: string]: { [score: number]: number } } = {};
+  [1, 2, 3, 4, 5].forEach((q) => {
+    distribution[`q${q}`] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    responses.forEach((r) => {
+      const score = r[`q${q}_score` as keyof Response] as number;
+      distribution[`q${q}`][score] = (distribution[`q${q}`][score] || 0) + 1;
+    });
+  });
+
+  // Calculate average scores for each response
+  const responseAverages = responses.map((r) => 
+    (r.q1_score + r.q2_score + r.q3_score + r.q4_score + r.q5_score) / 5
+  );
+
+  // Calculate dissatisfied percent (avg <= 2)
+  const dissatisfiedCount = responseAverages.filter((avg) => avg <= 2).length;
+  const dissatisfiedPercent = responses.length > 0 
+    ? (dissatisfiedCount / responses.length) * 100 
+    : 0;
+
+  // Calculate median
+  const calculateMedian = (values: number[]): number => {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+
+  const median = calculateMedian(responseAverages);
+
   const stats = {
     totalResponses: responses.length,
     avgTotal:
       responses.length > 0
-        ? responses.reduce(
-            (acc, r) =>
-              acc + (r.q1_score + r.q2_score + r.q3_score + r.q4_score + r.q5_score) / 5,
-            0
-          ) / responses.length
+        ? responseAverages.reduce((acc, avg) => acc + avg, 0) / responses.length
         : 0,
     avgByQuestion: [1, 2, 3, 4, 5].map((q) => ({
       question: q,
@@ -101,6 +131,8 @@ const Admin = () => {
             responses.length
           : 0,
     })),
+    dissatisfiedPercent,
+    median,
   };
 
   const exportCSV = () => {
@@ -167,6 +199,7 @@ const Admin = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AverageChart data={stats.avgByQuestion} />
+            <DistributionChart distribution={distribution} />
           </div>
 
           <ResponsesTable

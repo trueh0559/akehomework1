@@ -28,7 +28,7 @@ const AverageChart = ({ data }: AverageChartProps) => {
   };
 
   return (
-    <Card className="glass-card border-border/50 lg:col-span-2">
+    <Card className="glass-card border-border/50">
       <CardHeader>
         <CardTitle className="text-foreground flex items-center gap-2">
           📊 ค่าเฉลี่ยคะแนนรายข้อ
