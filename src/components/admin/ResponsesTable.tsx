@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Response } from '@/pages/Admin';
+import type { Response } from '@/types/survey';
 
 interface ResponsesTableProps {
   responses: Response[];

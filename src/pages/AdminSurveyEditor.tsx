@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Save, Eye, Loader2, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Eye, Loader2, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +15,9 @@ import NeuralBackground from '@/components/ui/NeuralBackground';
 import AdminHeader from '@/components/admin/AdminHeader';
 import QuestionEditor from '@/components/surveys/QuestionEditor';
 import QuestionRenderer from '@/components/surveys/QuestionRenderer';
+import ImportExportButtons from '@/components/surveys/ImportExportButtons';
+import SchedulingPicker from '@/components/surveys/SchedulingPicker';
+import AIQuestionGenerator from '@/components/surveys/AIQuestionGenerator';
 import type { Survey, SurveyQuestion, QuestionType } from '@/types/survey';
 
 const AdminSurveyEditor = () => {
@@ -27,6 +31,7 @@ const AdminSurveyEditor = () => {
   const [questions, setQuestions] = useState<Partial<SurveyQuestion>[]>([]);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [activeTab, setActiveTab] = useState('edit');
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -45,7 +50,6 @@ const AdminSurveyEditor = () => {
   }, [user, isAdmin, authLoading, navigate, id]);
 
   const fetchSurvey = async () => {
-    // Fetch survey
     const { data: surveyData, error: surveyError } = await supabase
       .from('surveys')
       .select('*')
@@ -61,7 +65,6 @@ const AdminSurveyEditor = () => {
 
     setSurvey(surveyData);
 
-    // Fetch questions
     const { data: questionsData, error: questionsError } = await supabase
       .from('survey_questions')
       .select('*')
@@ -71,7 +74,6 @@ const AdminSurveyEditor = () => {
     if (questionsError) {
       console.error('Error fetching questions:', questionsError);
     } else if (questionsData) {
-      // Cast the data to our local type
       const typedQuestions: Partial<SurveyQuestion>[] = questionsData.map((q) => ({
         ...q,
         question_type: q.question_type as QuestionType,
@@ -115,27 +117,46 @@ const AdminSurveyEditor = () => {
     setQuestions(newQuestions);
   };
 
+  const handleImport = (importedQuestions: Partial<SurveyQuestion>[], mode: 'replace' | 'append') => {
+    if (mode === 'replace') {
+      setQuestions(importedQuestions.map((q, i) => ({ ...q, survey_id: id, order_index: i })));
+    } else {
+      const startIndex = questions.length;
+      const newQuestions = importedQuestions.map((q, i) => ({
+        ...q,
+        survey_id: id,
+        order_index: startIndex + i,
+      }));
+      setQuestions([...questions, ...newQuestions]);
+    }
+  };
+
+  const handleAIInsert = (generatedQuestions: Partial<SurveyQuestion>[], mode: 'replace' | 'append') => {
+    handleImport(generatedQuestions, mode);
+    setShowAIGenerator(false);
+  };
+
   const saveSurvey = async () => {
     if (!survey || !id) return;
 
     setSaving(true);
 
     try {
-      // Update survey
       const { error: surveyError } = await supabase
         .from('surveys')
         .update({
           title: survey.title,
           description: survey.description,
+          start_at: survey.start_at,
+          end_at: survey.end_at,
+          is_active: survey.is_active,
         })
         .eq('id', id);
 
       if (surveyError) throw surveyError;
 
-      // Delete existing questions
       await supabase.from('survey_questions').delete().eq('survey_id', id);
 
-      // Insert new questions
       if (questions.length > 0) {
         const questionsToInsert = questions.map((q, index) => ({
           survey_id: id,
@@ -181,24 +202,32 @@ const AdminSurveyEditor = () => {
         <AdminHeader />
 
         <main className="container py-6 px-4">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <Button variant="ghost" onClick={() => navigate('/admin/surveys')} className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               กลับ
             </Button>
-            <Button onClick={saveSurvey} disabled={saving} className="gap-2">
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              บันทึก
-            </Button>
+            <div className="flex items-center gap-2">
+              <ImportExportButtons
+                survey={survey}
+                questions={questions}
+                onImport={handleImport}
+              />
+              <Button onClick={saveSurvey} disabled={saving} className="gap-2">
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                บันทึก
+              </Button>
+            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="edit">แก้ไข</TabsTrigger>
+              <TabsTrigger value="schedule">กำหนดเวลา</TabsTrigger>
               <TabsTrigger value="preview">ตัวอย่าง</TabsTrigger>
             </TabsList>
 
@@ -237,37 +266,87 @@ const AdminSurveyEditor = () => {
 
               {/* Questions */}
               <Card className="glass-card">
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                   <CardTitle>คำถาม ({questions.length})</CardTitle>
-                  <Button onClick={addQuestion} size="sm" className="gap-1">
-                    <Plus className="w-4 h-4" />
-                    เพิ่มคำถาม
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAIGenerator(true)}
+                      className="gap-1"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      AI ช่วยคิด
+                    </Button>
+                    <Button onClick={addQuestion} size="sm" className="gap-1">
+                      <Plus className="w-4 h-4" />
+                      เพิ่มคำถาม
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {questions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>ยังไม่มีคำถาม</p>
-                      <Button onClick={addQuestion} variant="outline" className="mt-2 gap-1">
-                        <Plus className="w-4 h-4" />
-                        เพิ่มคำถามแรก
-                      </Button>
-                    </div>
-                  ) : (
-                    questions.map((question, index) => (
-                      <QuestionEditor
-                        key={index}
-                        question={question}
-                        index={index}
-                        onChange={(updates) => updateQuestion(index, updates)}
-                        onDelete={() => deleteQuestion(index)}
-                        onMoveUp={() => moveQuestion(index, 'up')}
-                        onMoveDown={() => moveQuestion(index, 'down')}
-                        isFirst={index === 0}
-                        isLast={index === questions.length - 1}
-                      />
-                    ))
-                  )}
+                  <AnimatePresence>
+                    {questions.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        <p>ยังไม่มีคำถาม</p>
+                        <div className="flex justify-center gap-2 mt-4">
+                          <Button onClick={addQuestion} variant="outline" className="gap-1">
+                            <Plus className="w-4 h-4" />
+                            เพิ่มคำถามแรก
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowAIGenerator(true)}
+                            className="gap-1"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            ให้ AI สร้าง
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      questions.map((question, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <QuestionEditor
+                            question={question}
+                            index={index}
+                            onChange={(updates) => updateQuestion(index, updates)}
+                            onDelete={() => deleteQuestion(index)}
+                            onMoveUp={() => moveQuestion(index, 'up')}
+                            onMoveDown={() => moveQuestion(index, 'down')}
+                            isFirst={index === 0}
+                            isLast={index === questions.length - 1}
+                          />
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="schedule">
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle>กำหนดเวลาเปิด-ปิด</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SchedulingPicker
+                    survey={survey}
+                    onChange={(updates) =>
+                      setSurvey(survey ? { ...survey, ...updates } : null)
+                    }
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -287,7 +366,13 @@ const AdminSurveyEditor = () => {
                     </p>
                   ) : (
                     questions.map((question, index) => (
-                      <div key={index} className="space-y-3">
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="space-y-3"
+                      >
                         <div className="flex items-start gap-2">
                           <span className="text-sm font-medium text-muted-foreground">
                             {index + 1}.
@@ -310,7 +395,7 @@ const AdminSurveyEditor = () => {
                             }
                           />
                         </div>
-                      </div>
+                      </motion.div>
                     ))
                   )}
                 </CardContent>
@@ -319,6 +404,14 @@ const AdminSurveyEditor = () => {
           </Tabs>
         </main>
       </div>
+
+      {/* AI Generator Dialog */}
+      <AIQuestionGenerator
+        open={showAIGenerator}
+        onClose={() => setShowAIGenerator(false)}
+        onInsert={handleAIInsert}
+        surveyTitle={survey?.title || ''}
+      />
     </div>
   );
 };

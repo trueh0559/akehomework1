@@ -62,6 +62,33 @@
     --sidebar-border: 230 25% 25%;
     --sidebar-ring: 245 85% 60%;
   }
+
+  /* Light mode variables */
+  .light-mode {
+    --primary: 245 85% 50%;
+    --primary-foreground: 0 0% 100%;
+    --background: 0 0% 98%;
+    --foreground: 230 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 230 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 25% 15%;
+    --secondary: 230 20% 95%;
+    --secondary-foreground: 230 25% 25%;
+    --muted: 230 15% 92%;
+    --muted-foreground: 230 15% 45%;
+    --accent: 185 80% 45%;
+    --accent-foreground: 0 0% 100%;
+    --border: 230 15% 85%;
+    --input: 230 15% 90%;
+  }
+
+  /* Reduce motion */
+  .reduce-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer base {
