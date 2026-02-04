@@ -20,23 +20,23 @@ interface FaceSliderRendererProps {
 
 // Faces ordered: unhappy (left/low score) -> happy (right/high score)
 const DEFAULT_FACES: FaceConfig[] = [
-  { min: 0, max: 2, emoji: "😠", text: "ไม่พอใจมาก" },
-  { min: 2, max: 4, emoji: "😟", text: "ไม่พอใจ" },
-  { min: 4, max: 6, emoji: "😐", text: "ปานกลาง" },
-  { min: 6, max: 8, emoji: "🙂", text: "พอใจ" },
-  { min: 8, max: 10, emoji: "😍", text: "พอใจมาก" },
+  { min: 1, max: 1, emoji: "😠", text: "ไม่พอใจมาก" },
+  { min: 2, max: 2, emoji: "😟", text: "ไม่พอใจ" },
+  { min: 3, max: 3, emoji: "😐", text: "ปานกลาง" },
+  { min: 4, max: 4, emoji: "🙂", text: "พอใจ" },
+  { min: 5, max: 5, emoji: "😍", text: "พอใจมาก" },
 ];
 
 const FaceSliderRenderer = ({ config, value, onChange, disabled }: FaceSliderRendererProps) => {
-  const min = config.min ?? 0;
-  const max = config.max ?? 10;
+  const min = config.min ?? 1;
+  const max = config.max ?? 5;
   const step = config.step ?? 1;
   const faces = config.faces || DEFAULT_FACES;
-  // Default to 5 (middle value) if no value selected
-  const currentValue = value?.score ?? 5;
+  // Default to 3 (middle value of 1-5) if no value selected
+  const currentValue = value?.score ?? 3;
 
   const currentFace = useMemo(() => {
-    return faces.find((f) => currentValue >= f.min && currentValue < f.max) || faces[faces.length - 1];
+    return faces.find((f) => currentValue >= f.min && currentValue <= f.max) || faces[faces.length - 1];
   }, [currentValue, faces]);
 
   const leftFace = faces[0];
