@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Mail, AlertTriangle, CheckCircle, Loader2, Send, Settings } from 'lucide-react';
+import { ArrowLeft, Plus, X, Mail, AlertTriangle, CheckCircle, Loader2, Send, Settings, Sun, Moon, Image, Video, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import NeuralBackground from '@/components/ui/NeuralBackground';
@@ -17,6 +20,7 @@ import type { AdminSettings as AdminSettingsType, AdminNotification } from '@/ty
 const AdminSettings = () => {
   const navigate = useNavigate();
   const { user, isAdmin, loading: authLoading } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
@@ -24,6 +28,7 @@ const AdminSettings = () => {
   const [settings, setSettings] = useState<AdminSettingsType | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [errors, setErrors] = useState<AdminNotification[]>([]);
+  const [bgUrl, setBgUrl] = useState(theme.background_value || '');
 
   useEffect(() => {
     if (!authLoading) {
@@ -141,6 +146,11 @@ const AdminSettings = () => {
     }
   };
 
+  const handleBgUrlSave = () => {
+    setTheme({ background_value: bgUrl || null });
+    toast.success('บันทึกพื้นหลังเรียบร้อย');
+  };
+
   if (authLoading || loading) {
     return (
       <div className="relative min-h-screen">
@@ -169,6 +179,103 @@ const AdminSettings = () => {
           </Button>
 
           <div className="space-y-6">
+            {/* Theme Settings */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  ธีมและพื้นหลัง
+                </CardTitle>
+                <CardDescription>
+                  ปรับแต่งรูปแบบการแสดงผลของแอพ
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Light/Dark Mode */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {theme.mode === 'dark' ? (
+                      <Moon className="w-5 h-5" />
+                    ) : (
+                      <Sun className="w-5 h-5" />
+                    )}
+                    <div>
+                      <Label>โหมด {theme.mode === 'dark' ? 'มืด' : 'สว่าง'}</Label>
+                      <p className="text-xs text-muted-foreground">
+                        เปลี่ยนธีมสีของแอพ
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={theme.mode === 'dark'}
+                    onCheckedChange={(checked) => setTheme({ mode: checked ? 'dark' : 'light' })}
+                  />
+                </div>
+
+                {/* Motion Toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>แอนิเมชัน</Label>
+                    <p className="text-xs text-muted-foreground">
+                      เปิด/ปิดเอฟเฟกต์เคลื่อนไหว
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme.enable_motion}
+                    onCheckedChange={(checked) => setTheme({ enable_motion: checked })}
+                  />
+                </div>
+
+                {/* Background Type */}
+                <div className="space-y-3">
+                  <Label>ประเภทพื้นหลัง</Label>
+                  <RadioGroup
+                    value={theme.background_type}
+                    onValueChange={(v) => setTheme({ background_type: v as any })}
+                    className="grid grid-cols-3 gap-3"
+                  >
+                    <label className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === 'solid' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                      <RadioGroupItem value="solid" className="sr-only" />
+                      <div className="w-8 h-8 rounded bg-gradient-to-br from-background to-card" />
+                      <span className="text-sm">สีพื้น</span>
+                    </label>
+                    <label className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === 'image' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                      <RadioGroupItem value="image" className="sr-only" />
+                      <Image className="w-8 h-8" />
+                      <span className="text-sm">รูปภาพ</span>
+                    </label>
+                    <label className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === 'video' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                      <RadioGroupItem value="video" className="sr-only" />
+                      <Video className="w-8 h-8" />
+                      <span className="text-sm">วิดีโอ</span>
+                    </label>
+                  </RadioGroup>
+                </div>
+
+                {/* Background URL */}
+                {theme.background_type !== 'solid' && (
+                  <div className="space-y-2">
+                    <Label>
+                      URL {theme.background_type === 'image' ? 'รูปภาพ' : 'วิดีโอ'}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={bgUrl}
+                        onChange={(e) => setBgUrl(e.target.value)}
+                        placeholder={`https://example.com/background.${theme.background_type === 'image' ? 'jpg' : 'mp4'}`}
+                      />
+                      <Button onClick={handleBgUrlSave} size="sm">
+                        บันทึก
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {theme.background_type === 'video' && 'วิดีโอจะเล่นแบบ muted และ loop อัตโนมัติ'}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Email Settings */}
             <Card className="glass-card">
               <CardHeader>

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -6,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import FaceSliderRenderer from './FaceSliderRenderer';
+import IconSizeScaleRenderer from './IconSizeScaleRenderer';
 import type { SurveyQuestion, QuestionType } from '@/types/survey';
 
 interface QuestionRendererProps {
@@ -20,6 +21,30 @@ const DEFAULT_ICONS = ['⭐'];
 
 const QuestionRenderer = ({ question, value, onChange, disabled }: QuestionRendererProps) => {
   const { question_type, config } = question;
+
+  // Face Slider Continuous
+  if (question_type === 'face_slider_continuous') {
+    return (
+      <FaceSliderRenderer
+        config={config}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+
+  // Icon Size Scale
+  if (question_type === 'icon_size_scale') {
+    return (
+      <IconSizeScaleRenderer
+        config={config}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
 
   // Slider Continuous
   if (question_type === 'slider_continuous') {

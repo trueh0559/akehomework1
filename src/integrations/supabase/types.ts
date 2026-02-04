@@ -217,23 +217,56 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          end_at: string | null
           id: string
           is_active: boolean | null
+          start_at: string | null
           title: string
         }
         Insert: {
           created_at?: string | null
           description?: string | null
+          end_at?: string | null
           id?: string
           is_active?: boolean | null
+          start_at?: string | null
           title: string
         }
         Update: {
           created_at?: string | null
           description?: string | null
+          end_at?: string | null
           id?: string
           is_active?: boolean | null
+          start_at?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      ui_settings: {
+        Row: {
+          background_type: string
+          background_value: string | null
+          enable_motion: boolean
+          id: string
+          mode: string
+          updated_at: string
+        }
+        Insert: {
+          background_type?: string
+          background_value?: string | null
+          enable_motion?: boolean
+          id?: string
+          mode?: string
+          updated_at?: string
+        }
+        Update: {
+          background_type?: string
+          background_value?: string | null
+          enable_motion?: boolean
+          id?: string
+          mode?: string
+          updated_at?: string
         }
         Relationships: []
       }

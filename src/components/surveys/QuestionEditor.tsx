@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import type { SurveyQuestion, QuestionType, QuestionConfig } from '@/types/survey';
-import { QUESTION_TYPE_INFO } from '@/types/survey';
+import { QUESTION_TYPE_INFO, DEFAULT_QUESTION_CONFIGS } from '@/types/survey';
 
 interface QuestionEditorProps {
   question: Partial<SurveyQuestion>;
@@ -47,6 +47,12 @@ const QuestionEditor = ({
 
   const updateConfig = (updates: Partial<QuestionConfig>) => {
     onChange({ config: { ...config, ...updates } });
+  };
+
+  // When type changes, apply default config
+  const handleTypeChange = (type: QuestionType) => {
+    const defaultConfig = DEFAULT_QUESTION_CONFIGS[type] || {};
+    onChange({ question_type: type, config: { ...defaultConfig } });
   };
 
   const renderConfigFields = () => {
@@ -89,6 +95,96 @@ const QuestionEditor = ({
               onChange={(e) => updateConfig({ maxLabel: e.target.value })}
               placeholder="มากที่สุด"
               className="mt-1"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'face_slider_continuous') {
+      return (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="text-xs">ค่าต่ำสุด</Label>
+              <Input
+                type="number"
+                value={config.min ?? 0}
+                onChange={(e) => updateConfig({ min: Number(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">ค่าสูงสุด</Label>
+              <Input
+                type="number"
+                value={config.max ?? 10}
+                onChange={(e) => updateConfig({ max: Number(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Step</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={config.step ?? 0.1}
+                onChange={(e) => updateConfig({ step: Number(e.target.value) })}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Label ด้านซ้าย</Label>
+              <Input
+                value={config.leftLabel ?? ''}
+                onChange={(e) => updateConfig({ leftLabel: e.target.value })}
+                placeholder="ไม่เลย"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Label ด้านขวา</Label>
+              <Input
+                value={config.rightLabel ?? ''}
+                onChange={(e) => updateConfig({ rightLabel: e.target.value })}
+                placeholder="มากที่สุด"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            หน้าตาอิโมจิจะเปลี่ยนตามค่าที่เลือกอัตโนมัติ (ใช้ค่า default 5 ระดับ)
+          </p>
+        </div>
+      );
+    }
+
+    if (type === 'icon_size_scale') {
+      const sizeOptions = config.sizeOptions || DEFAULT_QUESTION_CONFIGS.icon_size_scale?.sizeOptions;
+      return (
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">ตัวเลือกขนาด (value,label,icon คั่นด้วย | แต่ละบรรทัด)</Label>
+            <Textarea
+              value={sizeOptions?.map((o) => `${o.value},${o.label},${o.icon}`).join('\n') || ''}
+              onChange={(e) => {
+                const lines = e.target.value.split('\n').filter((l) => l.trim());
+                const newOptions = lines.map((line, i) => {
+                  const [value, label, icon] = line.split(',');
+                  return {
+                    value: value?.trim() || `opt${i}`,
+                    label: label?.trim() || value?.trim() || `${i}`,
+                    icon: icon?.trim() || '👕',
+                    scale: 0.7 + i * 0.15,
+                  };
+                });
+                updateConfig({ sizeOptions: newOptions });
+              }}
+              placeholder="XS,XS,👕&#10;S,S,👕&#10;M,M,👕&#10;L,L,👕&#10;XL,XL,👕"
+              rows={5}
+              className="mt-1 font-mono text-xs"
             />
           </div>
         </div>
@@ -218,9 +314,9 @@ const QuestionEditor = ({
             <div className="flex flex-wrap items-center gap-3">
               <Select
                 value={question.question_type || 'linear_1_5'}
-                onValueChange={(value) => onChange({ question_type: value as QuestionType })}
+                onValueChange={(value) => handleTypeChange(value as QuestionType)}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-56">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

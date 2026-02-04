@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { Response } from '@/pages/Admin';
+import type { Response } from '@/types/survey';
 
 const emojis = ['😠', '😕', '😐', '🙂', '😄'];
 const labels = [
