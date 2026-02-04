@@ -1,1 +1,10 @@
 project_id = "gblpsayemvvgtjtcfgdn"
+
+[functions.ai-generate-questions]
+verify_jwt = false
+
+[functions.notify-new-response]
+verify_jwt = false
+
+[functions.send-test-email]
+verify_jwt = false
