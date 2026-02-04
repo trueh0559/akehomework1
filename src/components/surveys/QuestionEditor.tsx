@@ -111,7 +111,7 @@ const QuestionEditor = ({
               <Label className="text-xs">ค่าต่ำสุด</Label>
               <Input
                 type="number"
-                value={config.min ?? 0}
+                value={config.min ?? 1}
                 onChange={(e) => updateConfig({ min: Number(e.target.value) })}
                 className="mt-1"
               />
@@ -120,7 +120,7 @@ const QuestionEditor = ({
               <Label className="text-xs">ค่าสูงสุด</Label>
               <Input
                 type="number"
-                value={config.max ?? 10}
+                value={config.max ?? 5}
                 onChange={(e) => updateConfig({ max: Number(e.target.value) })}
                 className="mt-1"
               />
