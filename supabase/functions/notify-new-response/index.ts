@@ -1,149 +1,288 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface ResponseData {
-  name: string;
-  email: string;
-  q1_score: number;
-  q2_score: number;
-  q3_score: number;
-  q4_score: number;
-  q5_score: number;
-  comment: string | null;
-  is_anonymous: boolean;
+interface LowScoreItem {
+  question_id: string;
+  question_text: string;
+  score: number;
+  threshold: number;
 }
 
+// Score-based question types
+const SCORE_QUESTION_TYPES = ['slider_continuous', 'linear_1_5', 'emoji_visual', 'icon_rating'];
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const adminEmail = Deno.env.get("ADMIN_EMAIL");
+  const requestId = crypto.randomUUID();
+  console.log(`[${requestId}] notify-new-response invoked`);
 
-    // If no API key or admin email configured, just log and return success
-    if (!resendApiKey || !adminEmail) {
-      console.log("Email notification skipped: RESEND_API_KEY or ADMIN_EMAIL not configured");
+  try {
+    const { response_id } = await req.json();
+    
+    if (!response_id) {
+      console.log(`[${requestId}] No response_id provided`);
       return new Response(
-        JSON.stringify({ success: true, message: "Notification skipped - not configured" }),
+        JSON.stringify({ success: false, message: "Missing response_id" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    console.log(`[${requestId}] Processing response: ${response_id}`);
+
+    // Create Supabase client with service role for full access
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 1. Fetch the response
+    const { data: response, error: responseError } = await supabase
+      .from("survey_responses")
+      .select("*")
+      .eq("id", response_id)
+      .single();
+
+    if (responseError || !response) {
+      console.error(`[${requestId}] Error fetching response:`, responseError);
+      throw new Error("Response not found");
+    }
+
+    console.log(`[${requestId}] Response found for survey: ${response.survey_id}`);
+
+    // 2. Fetch questions for this survey
+    const { data: questions, error: questionsError } = await supabase
+      .from("survey_questions")
+      .select("*")
+      .eq("survey_id", response.survey_id);
+
+    if (questionsError) {
+      console.error(`[${requestId}] Error fetching questions:`, questionsError);
+      throw new Error("Questions not found");
+    }
+
+    // 3. Fetch admin settings
+    const { data: settings, error: settingsError } = await supabase
+      .from("admin_settings")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (settingsError) {
+      console.error(`[${requestId}] Error fetching settings:`, settingsError);
+      throw new Error("Admin settings not found");
+    }
+
+    const threshold = settings.low_score_threshold || 3;
+    const adminEmails: string[] = settings.admin_emails || [];
+
+    console.log(`[${requestId}] Threshold: ${threshold}, Admin emails: ${adminEmails.length}`);
+
+    // 4. Check for low scores (per question)
+    const lowScoreItems: LowScoreItem[] = [];
+    const answers = response.answers as Record<string, any>;
+
+    for (const question of questions) {
+      // Only check score-based questions
+      if (!SCORE_QUESTION_TYPES.includes(question.question_type)) {
+        continue;
+      }
+
+      const answer = answers[question.id];
+      if (answer && typeof answer.score === 'number') {
+        if (answer.score < threshold) {
+          lowScoreItems.push({
+            question_id: question.id,
+            question_text: question.question_text,
+            score: answer.score,
+            threshold: threshold,
+          });
+        }
+      }
+    }
+
+    console.log(`[${requestId}] Low score items found: ${lowScoreItems.length}`);
+
+    // 5. If no low scores, return success (no email needed)
+    if (lowScoreItems.length === 0) {
+      console.log(`[${requestId}] No low scores detected, skipping notification`);
+      return new Response(
+        JSON.stringify({ success: true, message: "No low scores detected" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const responseData: ResponseData = await req.json();
-    const { Resend } = await import("https://esm.sh/resend@2.0.0");
-    
-    const totalScore = responseData.q1_score + responseData.q2_score + 
-                       responseData.q3_score + responseData.q4_score + 
-                       responseData.q5_score;
-    const avgScore = totalScore / 5;
+    // 6. Create admin notification in database
+    const { error: notificationError } = await supabase
+      .from("admin_notifications")
+      .insert({
+        type: "low_score",
+        title: `⚠️ คะแนนต่ำ - ${lowScoreItems.length} ข้อ`,
+        message: `พบคำตอบที่มีคะแนนต่ำกว่าเกณฑ์ (< ${threshold}) จำนวน ${lowScoreItems.length} ข้อ`,
+        severity: "warning",
+        payload: {
+          response_id: response_id,
+          survey_id: response.survey_id,
+          respondent_name: response.respondent_name,
+          respondent_email: response.respondent_email,
+          is_anonymous: response.is_anonymous,
+          submitted_at: response.submitted_at,
+          low_score_items: lowScoreItems,
+        },
+      });
 
-    // Determine if this is a low score (requires attention)
-    const isLowScore = avgScore < 3;
-    const subjectEmoji = isLowScore ? "⚠️" : "📊";
-    const alertType = isLowScore ? "คะแนนต่ำ - ต้องการความสนใจ" : "คำตอบใหม่";
+    if (notificationError) {
+      console.error(`[${requestId}] Error creating notification:`, notificationError);
+    }
 
-    const resend = new Resend(resendApiKey);
+    // 7. Send email if configured
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const emailFrom = Deno.env.get("EMAIL_FROM") || "Survey <noreply@resend.dev>";
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 20px; border-radius: 12px 12px 0 0; }
-          .content { background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; }
-          .score-box { background: white; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid ${isLowScore ? '#ef4444' : '#22c55e'}; }
-          .score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
-          .score-item { text-align: center; padding: 10px; background: white; border-radius: 8px; }
-          .score-value { font-size: 24px; font-weight: bold; color: #6366f1; }
-          .total-score { font-size: 32px; font-weight: bold; color: ${isLowScore ? '#ef4444' : '#22c55e'}; }
-          .footer { background: #1e293b; color: #94a3b8; padding: 15px; border-radius: 0 0 12px 12px; text-align: center; font-size: 12px; }
-          .alert-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background: ${isLowScore ? '#fef2f2' : '#f0fdf4'}; color: ${isLowScore ? '#dc2626' : '#16a34a'}; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin:0">${subjectEmoji} แบบประเมินใหม่</h1>
-            <p style="margin:5px 0 0 0;opacity:0.9">คอร์สเรียนการเขียน App ด้วย AI</p>
-          </div>
-          <div class="content">
-            <span class="alert-badge">${alertType}</span>
-            
-            <div class="score-box">
-              <h3 style="margin:0 0 10px 0">📊 สรุปคะแนน</h3>
-              <p style="margin:0">คะแนนเฉลี่ย: <span class="total-score">${avgScore.toFixed(1)}/5</span></p>
-              <p style="margin:5px 0 0 0;color:#64748b">คะแนนรวม: ${totalScore}/25</p>
+    if (!resendApiKey || adminEmails.length === 0) {
+      console.log(`[${requestId}] Email skipped: No API key or admin emails configured`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Low score notification created, email skipped (not configured)",
+          low_score_items: lowScoreItems 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    try {
+      const { Resend } = await import("https://esm.sh/resend@2.0.0");
+      const resend = new Resend(resendApiKey);
+
+      const respondentInfo = response.is_anonymous 
+        ? "ไม่ระบุตัวตน" 
+        : `${response.respondent_name || "ไม่ระบุชื่อ"} (${response.respondent_email || "ไม่ระบุอีเมล"})`;
+
+      const lowScoreHtml = lowScoreItems.map((item, idx) => `
+        <tr style="background: ${idx % 2 === 0 ? '#fff' : '#f8fafc'};">
+          <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${item.question_text}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+            <span style="color: #dc2626; font-weight: bold;">${item.score}</span>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.threshold}</td>
+        </tr>
+      `).join("");
+
+      const emailHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; }
+            .header { background: linear-gradient(135deg, #dc2626, #f97316); color: white; padding: 24px; text-align: center; }
+            .content { padding: 24px; background: #f8fafc; }
+            .alert-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+            .alert-box h3 { margin: 0 0 8px 0; color: #dc2626; }
+            table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+            th { background: #1e293b; color: white; padding: 12px; text-align: left; }
+            .footer { background: #1e293b; color: #94a3b8; padding: 16px; text-align: center; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin:0">⚠️ แจ้งเตือนคะแนนต่ำ</h1>
+              <p style="margin:8px 0 0 0;opacity:0.9">พบคำตอบที่ต้องการความสนใจ</p>
             </div>
+            <div class="content">
+              <div class="alert-box">
+                <h3>📊 สรุปปัญหา</h3>
+                <p style="margin:0">พบ <strong>${lowScoreItems.length}</strong> ข้อที่มีคะแนนต่ำกว่าเกณฑ์ (< ${threshold})</p>
+              </div>
+              
+              <h3>👤 ผู้ตอบ</h3>
+              <p>${respondentInfo}</p>
+              <p style="color:#64748b;font-size:14px">
+                ส่งเมื่อ: ${new Date(response.submitted_at).toLocaleString('th-TH')}
+              </p>
 
-            <h3>📝 คะแนนแต่ละข้อ</h3>
-            <table style="width:100%;border-collapse:collapse;">
-              <tr>
-                <td style="padding:8px;background:#f1f5f9;border-radius:4px;">ข้อ 1: ความเข้าใจเนื้อหา</td>
-                <td style="padding:8px;text-align:right;font-weight:bold;color:#6366f1;">${responseData.q1_score}/5</td>
-              </tr>
-              <tr>
-                <td style="padding:8px;">ข้อ 2: ความชัดเจนในการอธิบาย</td>
-                <td style="padding:8px;text-align:right;font-weight:bold;color:#6366f1;">${responseData.q2_score}/5</td>
-              </tr>
-              <tr>
-                <td style="padding:8px;background:#f1f5f9;border-radius:4px;">ข้อ 3: การนำไปใช้งานจริง</td>
-                <td style="padding:8px;text-align:right;font-weight:bold;color:#6366f1;">${responseData.q3_score}/5</td>
-              </tr>
-              <tr>
-                <td style="padding:8px;">ข้อ 4: คุณภาพเครื่องมือ AI</td>
-                <td style="padding:8px;text-align:right;font-weight:bold;color:#6366f1;">${responseData.q4_score}/5</td>
-              </tr>
-              <tr>
-                <td style="padding:8px;background:#f1f5f9;border-radius:4px;">ข้อ 5: ความคุ้มค่าโดยรวม</td>
-                <td style="padding:8px;text-align:right;font-weight:bold;color:#6366f1;">${responseData.q5_score}/5</td>
-              </tr>
-            </table>
-
-            <h3>👤 ข้อมูลผู้ประเมิน</h3>
-            <p><strong>ชื่อ:</strong> ${responseData.is_anonymous ? '(ไม่ระบุตัวตน)' : responseData.name}</p>
-            <p><strong>Email:</strong> ${responseData.is_anonymous ? '(ไม่ระบุตัวตน)' : responseData.email}</p>
-
-            ${responseData.comment ? `
-            <h3>💬 ข้อเสนอแนะ</h3>
-            <div style="background:white;padding:15px;border-radius:8px;border:1px solid #e2e8f0;">
-              <p style="margin:0;white-space:pre-wrap;">${responseData.comment}</p>
+              <h3>📝 รายละเอียดคะแนนต่ำ</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>คำถาม</th>
+                    <th style="text-align:center">คะแนน</th>
+                    <th style="text-align:center">เกณฑ์</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${lowScoreHtml}
+                </tbody>
+              </table>
             </div>
-            ` : ''}
+            <div class="footer">
+              <p>ระบบแจ้งเตือนอัตโนมัติ - Survey System</p>
+            </div>
           </div>
-          <div class="footer">
-            <p>ระบบแจ้งเตือนอัตโนมัติ - AI App Development Course</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+        </body>
+        </html>
+      `;
 
-    const emailResponse = await resend.emails.send({
-      from: "Survey Notification <noreply@resend.dev>",
-      to: [adminEmail],
-      subject: `${subjectEmoji} ${alertType} - คะแนนเฉลี่ย ${avgScore.toFixed(1)}/5`,
-      html: emailHtml,
-    });
+      console.log(`[${requestId}] Sending email to ${adminEmails.length} recipients`);
 
-    console.log("Email sent successfully:", emailResponse);
+      const emailResponse = await resend.emails.send({
+        from: emailFrom,
+        to: adminEmails,
+        subject: `⚠️ แจ้งเตือนคะแนนต่ำ - ${lowScoreItems.length} ข้อต้องการความสนใจ`,
+        html: emailHtml,
+      });
 
-    return new Response(
-      JSON.stringify({ success: true, emailResponse }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+      console.log(`[${requestId}] Email sent successfully:`, emailResponse);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Low score notification sent",
+          email_response: emailResponse,
+          low_score_items: lowScoreItems 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+
+    } catch (emailError: any) {
+      console.error(`[${requestId}] Email error:`, emailError);
+
+      // Log email error to notifications
+      await supabase.from("admin_notifications").insert({
+        type: "system_error",
+        title: "❌ ส่งอีเมลไม่สำเร็จ",
+        message: `ไม่สามารถส่งอีเมลแจ้งเตือนคะแนนต่ำได้: ${emailError.message}`,
+        severity: "critical",
+        payload: {
+          error: emailError.message,
+          response_id: response_id,
+          attempted_recipients: adminEmails,
+        },
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: "Email failed but notification created",
+          error: emailError.message,
+          low_score_items: lowScoreItems 
+        }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
   } catch (error: any) {
-    console.error("Error sending notification:", error);
+    console.error(`[${requestId}] Error:`, error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

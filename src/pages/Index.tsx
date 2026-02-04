@@ -1,5 +1,5 @@
 import NeuralBackground from '@/components/ui/NeuralBackground';
-import SurveyForm from '@/components/survey/SurveyForm';
+import DynamicSurveyForm from '@/components/surveys/DynamicSurveyForm';
 import FloatingAdminButton from '@/components/FloatingAdminButton';
 
 const Index = () => {
@@ -9,9 +9,9 @@ const Index = () => {
       <NeuralBackground />
       
       {/* Content */}
-      <div className="relative z-10 container py-8 sm:py-12 md:py-16 px-4">
+      <div className="relative z-10 container py-8 sm:py-12 md:py-16 px-4 max-w-2xl">
         <div className="glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl animate-slide-up">
-          <SurveyForm />
+          <DynamicSurveyForm />
         </div>
         
         {/* Footer */}

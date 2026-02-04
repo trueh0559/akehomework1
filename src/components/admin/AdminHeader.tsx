@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Home } from 'lucide-react';
+import { LogOut, LayoutDashboard, Home, Settings, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const AdminHeader = () => {
   const navigate = useNavigate();
@@ -27,7 +28,26 @@ const AdminHeader = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <NotificationBell />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/admin/surveys')}
+            className="gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">แบบสำรวจ</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/admin/settings')}
+            className="gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">ตั้งค่า</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -44,7 +64,7 @@ const AdminHeader = () => {
             className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">ออกจากระบบ</span>
+            <span className="hidden sm:inline">ออก</span>
           </Button>
         </div>
       </div>

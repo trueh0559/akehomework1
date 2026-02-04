@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          payload: Json | null
+          severity: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          payload?: Json | null
+          severity: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          payload?: Json | null
+          severity?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      admin_settings: {
+        Row: {
+          admin_emails: string[]
+          created_at: string | null
+          id: string
+          low_score_threshold: number | null
+        }
+        Insert: {
+          admin_emails?: string[]
+          created_at?: string | null
+          id?: string
+          low_score_threshold?: number | null
+        }
+        Update: {
+          admin_emails?: string[]
+          created_at?: string | null
+          id?: string
+          low_score_threshold?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -71,6 +125,115 @@ export type Database = {
           q3_score?: number
           q4_score?: number
           q5_score?: number
+        }
+        Relationships: []
+      }
+      survey_questions: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          order_index: number
+          question_text: string
+          question_type: string
+          survey_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          order_index: number
+          question_text: string
+          question_type: string
+          survey_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          order_index?: number
+          question_text?: string
+          question_type?: string
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_questions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_responses: {
+        Row: {
+          answers: Json
+          id: string
+          is_anonymous: boolean | null
+          meta: Json | null
+          respondent_email: string | null
+          respondent_name: string | null
+          submitted_at: string | null
+          survey_id: string
+        }
+        Insert: {
+          answers: Json
+          id?: string
+          is_anonymous?: boolean | null
+          meta?: Json | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          submitted_at?: string | null
+          survey_id: string
+        }
+        Update: {
+          answers?: Json
+          id?: string
+          is_anonymous?: boolean | null
+          meta?: Json | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          submitted_at?: string | null
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      surveys: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          title?: string
         }
         Relationships: []
       }
