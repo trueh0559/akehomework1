@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, ChevronRight, Clock, Users } from 'lucide-react';
+import { Loader2, ChevronRight, Clock, Users, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,11 +89,14 @@ const Index = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent glow-primary mb-4">
+            <Heart className="w-8 h-8 text-white" />
+          </div>
           <h1 className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            แบบสำรวจความพึงพอใจ
+            Feeldi
           </h1>
-          <p className="text-muted-foreground text-lg">
-            เลือกแบบสำรวจที่ต้องการตอบ
+          <p className="text-muted-foreground text-base sm:text-lg">
+            Feedback that feels right
           </p>
         </motion.div>
 
@@ -170,7 +173,7 @@ const Index = () => {
         
         {/* Footer */}
         <p className="text-center text-muted-foreground text-xs sm:text-sm mt-12 opacity-60">
-          © 2026 AI App Development Course
+          © 2026 Feeldi – Feedback that feels right
         </p>
       </div>
 

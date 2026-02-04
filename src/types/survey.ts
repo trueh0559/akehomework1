@@ -147,14 +147,14 @@ export const DEFAULT_QUESTION_CONFIGS: Partial<Record<QuestionType, QuestionConf
     min: 0,
     max: 10,
     step: 0.1,
-    leftLabel: 'ไม่เลย',
-    rightLabel: 'มากที่สุด',
+    leftLabel: 'ไม่พอใจ',
+    rightLabel: 'พอใจมาก',
     faces: [
-      { min: 0, max: 2, emoji: '😌', text: 'สบายๆ' },
-      { min: 2, max: 4, emoji: '🙂', text: 'โอเค' },
+      { min: 0, max: 2, emoji: '😠', text: 'ไม่พอใจมาก' },
+      { min: 2, max: 4, emoji: '😟', text: 'ไม่พอใจ' },
       { min: 4, max: 6, emoji: '😐', text: 'ปานกลาง' },
-      { min: 6, max: 8, emoji: '😕', text: 'ค่อนข้าง' },
-      { min: 8, max: 10, emoji: '😵‍💫', text: 'มากๆ' },
+      { min: 6, max: 8, emoji: '🙂', text: 'พอใจ' },
+      { min: 8, max: 10, emoji: '😍', text: 'พอใจมาก' },
     ],
   },
   icon_size_scale: {
@@ -166,6 +166,12 @@ export const DEFAULT_QUESTION_CONFIGS: Partial<Record<QuestionType, QuestionConf
       { value: 'XL', label: 'XL', icon: '👕', scale: 1.3 },
     ],
     style: 'slider',
+  },
+  short_text: {
+    placeholder: 'พิมพ์คำตอบสั้นๆ...',
+  },
+  long_text: {
+    placeholder: 'พิมพ์คำตอบของคุณ...',
   },
 };
 

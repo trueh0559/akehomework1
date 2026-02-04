@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { z } from 'zod';
-import { UserPlus, Loader2, AlertCircle, Brain } from 'lucide-react';
+import { UserPlus, Loader2, AlertCircle, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,10 +85,10 @@ const Register = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center space-y-4 pb-2">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent glow-primary mb-4">
-                <Brain className="w-8 h-8 text-white" />
+                <Heart className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                สมัครสมาชิก
+                Feeldi
               </h1>
               <p className="text-muted-foreground text-sm">
                 สร้างบัญชีผู้ใช้ใหม่

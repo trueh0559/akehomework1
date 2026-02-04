@@ -63,24 +63,50 @@
     --sidebar-ring: 245 85% 60%;
   }
 
-  /* Light mode variables */
+  /* Light mode variables - Google Forms inspired */
   .light-mode {
-    --primary: 245 85% 50%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
-    --background: 0 0% 98%;
-    --foreground: 230 25% 15%;
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 15%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 15%;
-    --secondary: 230 20% 95%;
-    --secondary-foreground: 230 25% 25%;
-    --muted: 230 15% 92%;
-    --muted-foreground: 230 15% 45%;
-    --accent: 185 80% 45%;
+    --popover-foreground: 222 47% 11%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 262 83% 58%;
     --accent-foreground: 0 0% 100%;
-    --border: 230 15% 85%;
-    --input: 230 15% 90%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 262 83% 58%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Override gradient for light mode */
+    --gradient-start: 0 0% 98%;
+    --gradient-mid: 0 0% 100%;
+    --gradient-end: 210 40% 98%;
+  }
+
+  .light-mode body {
+    background: hsl(0 0% 98%);
+  }
+
+  .light-mode .glass-card {
+    background: hsl(0 0% 100%);
+    border: 1px solid hsl(214 32% 91%);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+
+  .light-mode .glass-card::before {
+    display: none;
+  }
+
+  .light-mode .neural-bg {
+    opacity: 0.3;
   }
 
   /* Reduce motion */
