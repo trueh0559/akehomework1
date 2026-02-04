@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Home, Settings, FileText } from 'lucide-react';
+import { LogOut, LayoutDashboard, Home, Settings, FileText, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -18,10 +18,10 @@ const AdminHeader = () => {
       <div className="container py-4 px-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <LayoutDashboard className="w-5 h-5 text-white" />
+            <Heart className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">Admin Dashboard</h1>
+            <h1 className="text-lg font-bold text-foreground">Feeldi</h1>
             <p className="text-xs text-muted-foreground">
               สวัสดี, {user?.displayName || user?.email}
             </p>

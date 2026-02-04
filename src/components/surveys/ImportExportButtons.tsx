@@ -67,7 +67,9 @@ const ImportExportButtons = ({ survey, questions, onImport }: ImportExportButton
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `survey_${survey.id}_questions.json`;
+    // Use survey title as default filename (sanitize for filesystem)
+    const safeTitle = survey.title.replace(/[^a-zA-Z0-9ก-๙\s-]/g, '').replace(/\s+/g, '_');
+    link.download = `${safeTitle || 'survey'}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

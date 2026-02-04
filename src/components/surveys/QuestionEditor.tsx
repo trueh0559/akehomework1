@@ -49,10 +49,12 @@ const QuestionEditor = ({
     onChange({ config: { ...config, ...updates } });
   };
 
-  // When type changes, apply default config
+  // When type changes, apply default config and set default is_required
   const handleTypeChange = (type: QuestionType) => {
     const defaultConfig = DEFAULT_QUESTION_CONFIGS[type] || {};
-    onChange({ question_type: type, config: { ...defaultConfig } });
+    // Text questions default to not required
+    const defaultRequired = type !== 'short_text' && type !== 'long_text';
+    onChange({ question_type: type, config: { ...defaultConfig }, is_required: defaultRequired });
   };
 
   const renderConfigFields = () => {

@@ -18,12 +18,13 @@ interface FaceSliderRendererProps {
   disabled?: boolean;
 }
 
+// Faces ordered: unhappy (left/low score) -> happy (right/high score)
 const DEFAULT_FACES: FaceConfig[] = [
-  { min: 0, max: 2, emoji: '😌', text: 'สบายๆ' },
-  { min: 2, max: 4, emoji: '🙂', text: 'โอเค' },
+  { min: 0, max: 2, emoji: '😠', text: 'ไม่พอใจมาก' },
+  { min: 2, max: 4, emoji: '😟', text: 'ไม่พอใจ' },
   { min: 4, max: 6, emoji: '😐', text: 'ปานกลาง' },
-  { min: 6, max: 8, emoji: '😕', text: 'ค่อนข้าง' },
-  { min: 8, max: 10, emoji: '😵‍💫', text: 'มากๆ' },
+  { min: 6, max: 8, emoji: '🙂', text: 'พอใจ' },
+  { min: 8, max: 10, emoji: '😍', text: 'พอใจมาก' },
 ];
 
 const FaceSliderRenderer = ({
@@ -36,7 +37,8 @@ const FaceSliderRenderer = ({
   const max = config.max ?? 10;
   const step = config.step ?? 0.1;
   const faces = config.faces || DEFAULT_FACES;
-  const currentValue = value?.score ?? (min + max) / 2;
+  // Default to 5 (middle value) if no value selected
+  const currentValue = value?.score ?? 5;
 
   const currentFace = useMemo(() => {
     return faces.find((f) => currentValue >= f.min && currentValue < f.max) || faces[faces.length - 1];
