@@ -144,7 +144,7 @@ export const SCORE_QUESTION_TYPES: QuestionType[] = [
 // Default configs for each question type
 export const DEFAULT_QUESTION_CONFIGS: Partial<Record<QuestionType, QuestionConfig>> = {
   face_slider_continuous: {
-    min: 0,
+    min: 1,
     max: 5,
     step: 1,
     leftLabel: "ไม่พอใจ",
