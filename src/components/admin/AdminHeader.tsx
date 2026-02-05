@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Home, Settings, FileText, Heart } from 'lucide-react';
+import { LogOut, LayoutDashboard, Home, Settings, FileText, Heart, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -30,6 +30,15 @@ const AdminHeader = () => {
 
         <div className="flex items-center gap-1 sm:gap-2">
           <NotificationBell />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/admin/chats')}
+            className="gap-2"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="hidden sm:inline">Chat</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
