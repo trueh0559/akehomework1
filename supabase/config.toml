@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.send-test-email]
 verify_jwt = false
+
+[functions.chat]
+verify_jwt = false
+
+[functions.analyze-chat]
+verify_jwt = false

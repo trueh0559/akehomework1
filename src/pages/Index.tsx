@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import NeuralBackground from '@/components/ui/NeuralBackground';
 import FloatingAdminButton from '@/components/FloatingAdminButton';
+import FloatingChatButton from '@/components/chat/FloatingChatButton';
 import type { Survey } from '@/types/survey';
 
 const Index = () => {
@@ -177,6 +178,7 @@ const Index = () => {
         </p>
       </div>
 
+      <FloatingChatButton />
       <FloatingAdminButton />
     </div>
   );
