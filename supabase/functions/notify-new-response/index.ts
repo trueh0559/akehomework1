@@ -110,16 +110,84 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[${requestId}] Low score items found: ${lowScoreItems.length}`);
 
-    // 5. If no low scores, return success (no email needed)
+    // 5. Send Thank You email to respondent (if email provided)
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const emailFrom = Deno.env.get("EMAIL_FROM") || "Survey <noreply@resend.dev>";
+    
+    let thankYouSent = false;
+    
+    if (resendApiKey && response.respondent_email && !response.is_anonymous) {
+      try {
+        const { Resend } = await import("https://esm.sh/resend@2.0.0");
+        const resend = new Resend(resendApiKey);
+
+        const thankYouHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+              .container { max-width: 600px; margin: 0 auto; }
+              .header { background: linear-gradient(135deg, #10b981, #3b82f6); color: white; padding: 32px; text-align: center; }
+              .content { padding: 32px; background: #f8fafc; }
+              .thank-box { background: white; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+              .footer { background: #1e293b; color: #94a3b8; padding: 16px; text-align: center; font-size: 12px; }
+              .emoji { font-size: 48px; margin-bottom: 16px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1 style="margin:0">🙏 ขอบคุณสำหรับความคิดเห็น!</h1>
+              </div>
+              <div class="content">
+                <div class="thank-box">
+                  <div class="emoji">💚</div>
+                  <h2 style="margin:0 0 16px 0;color:#10b981">ได้รับข้อมูลเรียบร้อยแล้ว</h2>
+                  <p style="margin:0;color:#64748b">
+                    สวัสดีคุณ ${response.respondent_name || 'ผู้ตอบแบบสอบถาม'}<br><br>
+                    ขอบคุณที่สละเวลาแบ่งปันความคิดเห็น<br>
+                    ทุกคำตอบของคุณมีคุณค่าและช่วยให้เราพัฒนาบริการให้ดียิ่งขึ้น
+                  </p>
+                </div>
+              </div>
+              <div class="footer">
+                <p style="margin:0">ระบบส่งอีเมลอัตโนมัติ - Survey System</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        await resend.emails.send({
+          from: emailFrom,
+          to: [response.respondent_email],
+          subject: "🙏 ขอบคุณสำหรับความคิดเห็นของคุณ",
+          html: thankYouHtml,
+        });
+
+        thankYouSent = true;
+        console.log(`[${requestId}] Thank you email sent to: ${response.respondent_email}`);
+      } catch (thankYouError: any) {
+        console.error(`[${requestId}] Thank you email error:`, thankYouError);
+      }
+    }
+
+    // 6. If no low scores, return success
     if (lowScoreItems.length === 0) {
-      console.log(`[${requestId}] No low scores detected, skipping notification`);
+      console.log(`[${requestId}] No low scores detected`);
       return new Response(
-        JSON.stringify({ success: true, message: "No low scores detected" }),
+        JSON.stringify({ 
+          success: true, 
+          message: "Response processed", 
+          thank_you_sent: thankYouSent 
+        }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // 6. Create admin notification in database
+    // 7. Create admin notification in database
     const { error: notificationError } = await supabase
       .from("admin_notifications")
       .insert({
@@ -142,16 +210,16 @@ const handler = async (req: Request): Promise<Response> => {
       console.error(`[${requestId}] Error creating notification:`, notificationError);
     }
 
-    // 7. Send email if configured
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const emailFrom = Deno.env.get("EMAIL_FROM") || "Survey <noreply@resend.dev>";
-
+    // 8. Send low-score alert email to admins
+    // adminEmails already declared above from settings
+    
     if (!resendApiKey || adminEmails.length === 0) {
-      console.log(`[${requestId}] Email skipped: No API key or admin emails configured`);
+      console.log(`[${requestId}] Admin email skipped: No API key or admin emails configured`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: "Low score notification created, email skipped (not configured)",
+          message: "Low score notification created, admin email skipped",
+          thank_you_sent: thankYouSent,
           low_score_items: lowScoreItems 
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -248,6 +316,7 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           success: true, 
           message: "Low score notification sent",
+          thank_you_sent: thankYouSent,
           email_response: emailResponse,
           low_score_items: lowScoreItems 
         }),
@@ -273,7 +342,8 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "Email failed but notification created",
+          message: "Admin email failed but notification created",
+          thank_you_sent: thankYouSent,
           error: emailError.message,
           low_score_items: lowScoreItems 
         }),
