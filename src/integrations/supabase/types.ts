@@ -105,10 +105,16 @@ export type Database = {
           customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
+          department: string | null
           ended_at: string | null
+          form_context: Json | null
           id: string
           message_count: number
+          page_url: string | null
+          problem_type: string | null
           sentiment: string | null
+          sentiment_reason: string | null
+          source: string | null
           started_at: string
           status: string
           summary: string | null
@@ -117,10 +123,16 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          department?: string | null
           ended_at?: string | null
+          form_context?: Json | null
           id?: string
           message_count?: number
+          page_url?: string | null
+          problem_type?: string | null
           sentiment?: string | null
+          sentiment_reason?: string | null
+          source?: string | null
           started_at?: string
           status?: string
           summary?: string | null
@@ -129,10 +141,16 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          department?: string | null
           ended_at?: string | null
+          form_context?: Json | null
           id?: string
           message_count?: number
+          page_url?: string | null
+          problem_type?: string | null
           sentiment?: string | null
+          sentiment_reason?: string | null
+          source?: string | null
           started_at?: string
           status?: string
           summary?: string | null
