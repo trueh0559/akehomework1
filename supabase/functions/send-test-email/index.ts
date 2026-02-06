@@ -106,6 +106,21 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
     });
 
+    console.log(`[${requestId}] Resend response:`, JSON.stringify(emailResponse));
+
+    // Check if Resend returned an error
+    if (emailResponse.error) {
+      console.error(`[${requestId}] Resend error:`, emailResponse.error);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: `อีเมลส่งไม่สำเร็จ: ${emailResponse.error.message}`,
+          error: emailResponse.error 
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     console.log(`[${requestId}] Test email sent successfully:`, emailResponse);
 
     return new Response(
