@@ -15,7 +15,6 @@ const DEPARTMENT_LABELS: Record<string, string> = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -27,20 +26,19 @@ serve(async (req) => {
       throw new Error("session_id is required");
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const EMAIL_FROM = Deno.env.get("EMAIL_FROM");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials are not configured");
     }
 
-    // Create Supabase client with service role
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Fetch session info
@@ -54,7 +52,7 @@ serve(async (req) => {
       throw new Error(`Failed to fetch session: ${sessionError.message}`);
     }
 
-    // Fetch all messages for this session
+    // Fetch all messages
     const { data: messages, error: fetchError } = await supabase
       .from("chat_messages")
       .select("role, content, created_at")
@@ -66,7 +64,6 @@ serve(async (req) => {
     }
 
     if (!messages || messages.length === 0) {
-      // No messages to analyze, just mark as completed
       await supabase
         .from("chat_sessions")
         .update({
@@ -84,7 +81,6 @@ serve(async (req) => {
       );
     }
 
-    // Format conversation for analysis
     const conversationText = messages
       .map((m) => `${m.role === "user" ? "ลูกค้า" : "รู้ใจ"}: ${m.content}`)
       .join("\n");
@@ -93,93 +89,87 @@ serve(async (req) => {
 
     console.log(`[รู้ใจ] Analyzing session: ${session_id}, Department: ${departmentLabel}, Messages: ${messages.length}`);
 
-    // Call AI to analyze the conversation
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call Gemini API with tool calling (non-streaming)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const response = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: `คุณเป็นผู้เชี่ยวชาญในการวิเคราะห์การสนทนาบริการลูกค้า
+        system_instruction: {
+          parts: [{ text: `คุณเป็นผู้เชี่ยวชาญในการวิเคราะห์การสนทนาบริการลูกค้า
 วิเคราะห์บทสนทนาระหว่างลูกค้ากับพนักงาน "รู้ใจ" (แผนก: ${departmentLabel})
-ตอบโดยใช้ tool ที่กำหนด วิเคราะห์อย่างละเอียดและเป็นกลาง`,
-          },
+ตอบโดยใช้ tool ที่กำหนด วิเคราะห์อย่างละเอียดและเป็นกลาง` }],
+        },
+        contents: [
           {
             role: "user",
-            content: `วิเคราะห์บทสนทนาต่อไปนี้:\n\n${conversationText}`,
+            parts: [{ text: `วิเคราะห์บทสนทนาต่อไปนี้:\n\n${conversationText}` }],
           },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "analyze_conversation",
-              description: "วิเคราะห์และสรุปการสนทนากับลูกค้าอย่างละเอียด",
-              parameters: {
-                type: "object",
-                properties: {
-                  sentiment: {
-                    type: "string",
-                    enum: ["satisfied", "neutral", "dissatisfied"],
-                    description: "ความพึงพอใจของลูกค้า: satisfied = พอใจ, neutral = กลางๆ, dissatisfied = ไม่พอใจ",
-                  },
-                  sentiment_reason: {
-                    type: "string",
-                    description: "เหตุผลประกอบการประเมินความพึงพอใจ อธิบายสั้นๆ ว่าทำไมถึงประเมินเช่นนั้น",
-                  },
-                  problem_type: {
-                    type: "string",
-                    description: "ประเภทของปัญหา/คำถามหลักที่ลูกค้าต้องการความช่วยเหลือ เช่น สอบถามข้อมูล, ร้องเรียน, ขอคำแนะนำ",
-                  },
-                  summary: {
-                    type: "string",
-                    description: "สรุปใจความของการสนทนาเป็นภาษาไทยแบบพนักงานรายงาน ไม่เกิน 200 ตัวอักษร",
-                  },
+        tools: [{
+          function_declarations: [{
+            name: "analyze_conversation",
+            description: "วิเคราะห์และสรุปการสนทนากับลูกค้าอย่างละเอียด",
+            parameters: {
+              type: "object",
+              properties: {
+                sentiment: {
+                  type: "string",
+                  enum: ["satisfied", "neutral", "dissatisfied"],
+                  description: "ความพึงพอใจของลูกค้า",
                 },
-                required: ["sentiment", "sentiment_reason", "problem_type", "summary"],
+                sentiment_reason: {
+                  type: "string",
+                  description: "เหตุผลประกอบการประเมินความพึงพอใจ",
+                },
+                problem_type: {
+                  type: "string",
+                  description: "ประเภทของปัญหา/คำถามหลัก",
+                },
+                summary: {
+                  type: "string",
+                  description: "สรุปใจความของการสนทนาเป็นภาษาไทย ไม่เกิน 200 ตัวอักษร",
+                },
               },
+              required: ["sentiment", "sentiment_reason", "problem_type", "summary"],
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "analyze_conversation" } },
+          }],
+        }],
+        toolConfig: {
+          functionCallingConfig: { mode: "ANY" },
+        },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[รู้ใจ] AI analysis error:", response.status, errorText);
+      console.error("[รู้ใจ] Gemini analysis error:", response.status, errorText);
       throw new Error("Failed to analyze conversation");
     }
 
     const result = await response.json();
-    
-    // Extract tool call result
+
+    // Extract tool call result from Gemini format
     let sentiment = "neutral";
     let sentimentReason = "ไม่สามารถวิเคราะห์ได้";
     let problemType = "ไม่ระบุ";
     let summary = "ไม่สามารถสรุปได้";
 
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall && toolCall.function?.arguments) {
-      try {
-        const args = JSON.parse(toolCall.function.arguments);
-        sentiment = args.sentiment || "neutral";
-        sentimentReason = args.sentiment_reason || "ไม่สามารถวิเคราะห์ได้";
-        problemType = args.problem_type || "ไม่ระบุ";
-        summary = args.summary || "ไม่สามารถสรุปได้";
-      } catch (parseError) {
-        console.error("[รู้ใจ] Failed to parse tool call arguments:", parseError);
-      }
+    const candidate = result.candidates?.[0];
+    const functionCall = candidate?.content?.parts?.[0]?.functionCall;
+
+    if (functionCall?.args) {
+      const args = functionCall.args;
+      sentiment = args.sentiment || "neutral";
+      sentimentReason = args.sentiment_reason || "ไม่สามารถวิเคราะห์ได้";
+      problemType = args.problem_type || "ไม่ระบุ";
+      summary = args.summary || "ไม่สามารถสรุปได้";
     }
 
     console.log(`[รู้ใจ] Analysis result - Sentiment: ${sentiment}, Problem: ${problemType}`);
 
-    // Update the chat session with analysis results
+    // Update the chat session
     const { error: updateError } = await supabase
       .from("chat_sessions")
       .update({
@@ -200,7 +190,6 @@ serve(async (req) => {
     if (sentiment === "dissatisfied") {
       console.log(`[รู้ใจ] Dissatisfied customer detected! Creating alert...`);
 
-      // Create admin notification
       await supabase.from("admin_notifications").insert({
         type: "chat_dissatisfied",
         severity: "critical",
@@ -220,10 +209,8 @@ serve(async (req) => {
         },
       });
 
-      // Send email alert if configured
       if (RESEND_API_KEY && EMAIL_FROM) {
         try {
-          // Fetch admin emails
           const { data: settings } = await supabase
             .from("admin_settings")
             .select("admin_emails")
@@ -271,7 +258,6 @@ serve(async (req) => {
           }
         } catch (emailError) {
           console.error("[รู้ใจ] Failed to send alert email:", emailError);
-          // Don't throw - email failure shouldn't block the response
         }
       }
     }
@@ -290,10 +276,7 @@ serve(async (req) => {
     console.error("[รู้ใจ] Analyze chat error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

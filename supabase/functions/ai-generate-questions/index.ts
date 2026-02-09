@@ -32,12 +32,10 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // User client for JWT validation
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify JWT by getting user with token
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await userClient.auth.getUser(token);
     
@@ -51,10 +49,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const userId = userData.user.id;
 
-    // Service client for admin check (bypasses RLS)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check admin role using service client
     const { data: roleData, error: roleError } = await adminClient
       .from("user_roles")
       .select("role")
@@ -82,11 +78,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Use Lovable AI Gateway
-    const aiGatewayUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!lovableApiKey) {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
       return new Response(
         JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -140,31 +133,32 @@ ${typeConfigInstructions}
     const userPrompt = `สร้าง ${count} คำถามสำหรับแบบสำรวจเรื่อง: "${context}"
 ให้กระจายประเภทคำถามอย่างเหมาะสม และเน้นถามความรู้สึก/ประสบการณ์จริง`;
 
-    const aiResponse = await fetch(aiGatewayUrl, {
+    // Call Gemini API directly (non-streaming)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const aiResponse = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableApiKey}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [
+          { role: "user", parts: [{ text: userPrompt }] },
         ],
-        temperature: 0.7,
-        max_tokens: 4000,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 4000,
+        },
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI Gateway error:", errorText);
+      console.error("Gemini API error:", errorText);
       throw new Error("AI service unavailable");
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
+    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
