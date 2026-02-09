@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, ChevronRight, Clock, Users, Heart } from 'lucide-react';
+import { Loader2, ChevronRight, Clock, Users, Heart, Ticket } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,12 @@ import { supabase } from '@/integrations/supabase/client';
 import NeuralBackground from '@/components/ui/NeuralBackground';
 import FloatingAdminButton from '@/components/FloatingAdminButton';
 import FloatingChatButton from '@/components/chat/FloatingChatButton';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Survey } from '@/types/survey';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [openSurveys, setOpenSurveys] = useState<Survey[]>([]);
 
@@ -99,6 +102,27 @@ const Index = () => {
           <p className="text-muted-foreground text-base sm:text-lg">
             Feedback that feels right
           </p>
+          {user ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/my-coupons')}
+              className="mt-4 gap-2"
+            >
+              <Ticket className="w-4 h-4" />
+              คูปองของฉัน
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/login')}
+              className="mt-4 gap-2"
+            >
+              <Ticket className="w-4 h-4" />
+              เข้าสู่ระบบสมาชิก
+            </Button>
+          )}
         </motion.div>
 
         {/* Survey Cards */}

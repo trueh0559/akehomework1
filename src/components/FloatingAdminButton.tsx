@@ -12,17 +12,10 @@ const FloatingAdminButton = () => {
   const handleClick = () => {
     if (loading) return;
 
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    if (isAdmin) {
+    if (user && isAdmin) {
       navigate('/admin');
     } else {
-      toast.error('ไม่มีสิทธิ์เข้าหน้านี้', {
-        description: 'คุณไม่มีสิทธิ์เข้าถึงหน้า Admin Dashboard',
-      });
+      navigate('/login');
     }
   };
 
