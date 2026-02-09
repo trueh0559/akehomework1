@@ -17,6 +17,7 @@ import AdminSurveyEditor from "./pages/AdminSurveyEditor";
 import AdminChats from "./pages/AdminChats";
 import AdminCoupons from "./pages/AdminCoupons";
 import MyCoupons from "./pages/MyCoupons";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/admin/chats" element={<AdminChats />} />
               <Route path="/admin/coupons" element={<AdminCoupons />} />
               <Route path="/my-coupons" element={<MyCoupons />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
