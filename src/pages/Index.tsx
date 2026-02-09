@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, ChevronRight, Clock, Users, Heart, Ticket } from 'lucide-react';
+import { Loader2, ChevronRight, Clock, Users, Heart, Ticket, LogIn } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,6 +87,33 @@ const Index = () => {
       <NeuralBackground />
       
       <div className="relative z-10 container py-8 sm:py-12 md:py-16 px-4 max-w-4xl">
+        {/* Top-right member button */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="fixed top-4 right-4 z-20"
+        >
+          {user ? (
+            <Button
+              variant="outline"
+              onClick={() => navigate('/my-coupons')}
+              className="gap-2 text-base px-5 py-3 h-auto glass-card border-primary/30 hover:border-primary/60 shadow-lg"
+            >
+              <Ticket className="w-5 h-5" />
+              คูปองของฉัน
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => navigate('/login')}
+              className="gap-2 text-base px-5 py-3 h-auto glass-card border-primary/30 hover:border-primary/60 shadow-lg"
+            >
+              <LogIn className="w-5 h-5" />
+              เข้าสู่ระบบ
+            </Button>
+          )}
+        </motion.div>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -102,27 +129,6 @@ const Index = () => {
           <p className="text-muted-foreground text-base sm:text-lg">
             Feedback that feels right
           </p>
-          {user ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/my-coupons')}
-              className="mt-4 gap-2"
-            >
-              <Ticket className="w-4 h-4" />
-              คูปองของฉัน
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/login')}
-              className="mt-4 gap-2"
-            >
-              <Ticket className="w-4 h-4" />
-              เข้าสู่ระบบสมาชิก
-            </Button>
-          )}
         </motion.div>
 
         {/* Survey Cards */}
