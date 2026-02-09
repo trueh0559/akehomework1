@@ -157,6 +157,113 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_campaigns: {
+        Row: {
+          code_prefix: string
+          conditions: Json | null
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number | null
+          expire_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          name: string
+          start_at: string | null
+          survey_id: string | null
+          used_count: number
+        }
+        Insert: {
+          code_prefix?: string
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number | null
+          expire_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name: string
+          start_at?: string | null
+          survey_id?: string | null
+          used_count?: number
+        }
+        Update: {
+          code_prefix?: string
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number | null
+          expire_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          name?: string
+          start_at?: string | null
+          survey_id?: string | null
+          used_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_campaigns_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          campaign_id: string
+          code: string
+          created_at: string
+          id: string
+          response_id: string | null
+          status: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          code: string
+          created_at?: string
+          id?: string
+          response_id?: string | null
+          status?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          code?: string
+          created_at?: string
+          id?: string
+          response_id?: string | null
+          status?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "coupon_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "survey_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -271,6 +378,7 @@ export type Database = {
           respondent_name: string | null
           submitted_at: string | null
           survey_id: string
+          user_id: string | null
         }
         Insert: {
           answers: Json
@@ -281,6 +389,7 @@ export type Database = {
           respondent_name?: string | null
           submitted_at?: string | null
           survey_id: string
+          user_id?: string | null
         }
         Update: {
           answers?: Json
@@ -291,6 +400,7 @@ export type Database = {
           respondent_name?: string | null
           submitted_at?: string | null
           survey_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

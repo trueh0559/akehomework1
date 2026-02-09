@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Home, Settings, FileText, Heart, MessageSquare } from 'lucide-react';
+import { LogOut, LayoutDashboard, Home, Settings, FileText, Heart, MessageSquare, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -38,6 +38,15 @@ const AdminHeader = () => {
           >
             <MessageSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Chat</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/admin/coupons')}
+            className="gap-2"
+          >
+            <Ticket className="w-4 h-4" />
+            <span className="hidden sm:inline">คูปอง</span>
           </Button>
           <Button
             variant="ghost"

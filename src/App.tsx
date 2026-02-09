@@ -15,6 +15,8 @@ import AdminSettings from "./pages/AdminSettings";
 import AdminSurveys from "./pages/AdminSurveys";
 import AdminSurveyEditor from "./pages/AdminSurveyEditor";
 import AdminChats from "./pages/AdminChats";
+import AdminCoupons from "./pages/AdminCoupons";
+import MyCoupons from "./pages/MyCoupons";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +40,8 @@ const App = () => (
               <Route path="/admin/surveys" element={<AdminSurveys />} />
               <Route path="/admin/surveys/:id/edit" element={<AdminSurveyEditor />} />
               <Route path="/admin/chats" element={<AdminChats />} />
+              <Route path="/admin/coupons" element={<AdminCoupons />} />
+              <Route path="/my-coupons" element={<MyCoupons />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
