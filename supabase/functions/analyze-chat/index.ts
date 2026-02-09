@@ -89,66 +89,84 @@ serve(async (req) => {
 
     console.log(`[รู้ใจ] Analyzing session: ${session_id}, Department: ${departmentLabel}, Messages: ${messages.length}`);
 
-    // Call Gemini API with tool calling (non-streaming)
+    // Call Gemini API with tool calling (non-streaming) + retry on 429
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-    const response = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: `คุณเป็นผู้เชี่ยวชาญในการวิเคราะห์การสนทนาบริการลูกค้า
+    const geminiBody = JSON.stringify({
+      system_instruction: {
+        parts: [{ text: `คุณเป็นผู้เชี่ยวชาญในการวิเคราะห์การสนทนาบริการลูกค้า
 วิเคราะห์บทสนทนาระหว่างลูกค้ากับพนักงาน "รู้ใจ" (แผนก: ${departmentLabel})
 ตอบโดยใช้ tool ที่กำหนด วิเคราะห์อย่างละเอียดและเป็นกลาง` }],
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `วิเคราะห์บทสนทนาต่อไปนี้:\n\n${conversationText}` }],
         },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `วิเคราะห์บทสนทนาต่อไปนี้:\n\n${conversationText}` }],
-          },
-        ],
-        tools: [{
-          function_declarations: [{
-            name: "analyze_conversation",
-            description: "วิเคราะห์และสรุปการสนทนากับลูกค้าอย่างละเอียด",
-            parameters: {
-              type: "object",
-              properties: {
-                sentiment: {
-                  type: "string",
-                  enum: ["satisfied", "neutral", "dissatisfied"],
-                  description: "ความพึงพอใจของลูกค้า",
-                },
-                sentiment_reason: {
-                  type: "string",
-                  description: "เหตุผลประกอบการประเมินความพึงพอใจ",
-                },
-                problem_type: {
-                  type: "string",
-                  description: "ประเภทของปัญหา/คำถามหลัก",
-                },
-                summary: {
-                  type: "string",
-                  description: "สรุปใจความของการสนทนาเป็นภาษาไทย ไม่เกิน 200 ตัวอักษร",
-                },
+      ],
+      tools: [{
+        function_declarations: [{
+          name: "analyze_conversation",
+          description: "วิเคราะห์และสรุปการสนทนากับลูกค้าอย่างละเอียด",
+          parameters: {
+            type: "object",
+            properties: {
+              sentiment: {
+                type: "string",
+                enum: ["satisfied", "neutral", "dissatisfied"],
+                description: "ความพึงพอใจของลูกค้า",
               },
-              required: ["sentiment", "sentiment_reason", "problem_type", "summary"],
+              sentiment_reason: {
+                type: "string",
+                description: "เหตุผลประกอบการประเมินความพึงพอใจ",
+              },
+              problem_type: {
+                type: "string",
+                description: "ประเภทของปัญหา/คำถามหลัก",
+              },
+              summary: {
+                type: "string",
+                description: "สรุปใจความของการสนทนาเป็นภาษาไทย ไม่เกิน 200 ตัวอักษร",
+              },
             },
-          }],
+            required: ["sentiment", "sentiment_reason", "problem_type", "summary"],
+          },
         }],
-        toolConfig: {
-          functionCallingConfig: { mode: "ANY" },
-        },
-      }),
+      }],
+      toolConfig: {
+        functionCallingConfig: { mode: "ANY" },
+      },
     });
 
-    if (!response.ok) {
+    let result: any = null;
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: geminiBody,
+      });
+
+      if (response.ok) {
+        result = await response.json();
+        break;
+      }
+
+      if (response.status === 429 && attempt < maxRetries - 1) {
+        const waitMs = Math.pow(2, attempt + 1) * 1000; // 2s, 4s
+        console.log(`[รู้ใจ] Rate limited, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+
       const errorText = await response.text();
       console.error("[รู้ใจ] Gemini analysis error:", response.status, errorText);
       throw new Error("Failed to analyze conversation");
     }
 
-    const result = await response.json();
+    if (!result) {
+      throw new Error("Failed to analyze conversation after retries");
+    }
 
     // Extract tool call result from Gemini format
     let sentiment = "neutral";
