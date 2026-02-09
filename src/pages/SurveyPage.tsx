@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import NeuralBackground from '@/components/ui/NeuralBackground';
 import QuestionRenderer from '@/components/surveys/QuestionRenderer';
 import FloatingAdminButton from '@/components/FloatingAdminButton';
+import PostSurveyLogin from '@/components/survey/PostSurveyLogin';
 import type { Survey, SurveyQuestion, QuestionType } from '@/types/survey';
 
 const SurveyPage = () => {
@@ -23,6 +24,7 @@ const SurveyPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [lastResponseId, setLastResponseId] = useState<string | null>(null);
   const [notOpen, setNotOpen] = useState(false);
   const [notOpenMessage, setNotOpenMessage] = useState('');
   
@@ -148,6 +150,7 @@ const SurveyPage = () => {
         .single();
 
       if (responseError) throw responseError;
+      setLastResponseId(responseData.id);
 
       // Trigger notification
       try {
@@ -212,20 +215,12 @@ const SurveyPage = () => {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="glass-card text-center py-12">
-              <CardContent className="space-y-4">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: 'spring' }}
-                >
-                  <CheckCircle className="w-20 h-20 text-primary mx-auto" />
-                </motion.div>
-                <h2 className="text-2xl font-bold">ขอบคุณค่ะ!</h2>
-                <p className="text-muted-foreground">ความคิดเห็นของคุณมีค่ามากสำหรับเรา</p>
-                <Button variant="outline" onClick={() => navigate('/')} className="mt-4">
-                  กลับหน้าหลัก
-                </Button>
+            <Card className="glass-card py-8">
+              <CardContent>
+                <PostSurveyLogin
+                  responseId={lastResponseId || ''}
+                  onLoginSuccess={() => navigate('/my-coupons')}
+                />
               </CardContent>
             </Card>
           </motion.div>
