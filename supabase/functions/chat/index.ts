@@ -29,7 +29,7 @@ const DEPARTMENT_CONFIG: Record<string, { role: string; expertise: string }> = {
   },
 };
 
-// Persona guard patterns - things รู้ใจ should NEVER say
+// Persona guard patterns
 const FORBIDDEN_PATTERNS = [
   /เป็น\s*(AI|เอไอ|ปัญญาประดิษฐ์|โมเดลภาษา|language model|chatbot|แชทบอท|บอท)/i,
   /ผม(เป็น|คือ)\s*(AI|เอไอ|โปรแกรม|ระบบ)/i,
@@ -76,9 +76,7 @@ ${contextInfo}
 เมื่อเริ่มสนทนา ให้ทักทายแบบพนักงาน เช่น "สวัสดีค่ะ/ครับ รู้ใจยินดีให้บริการค่ะ/ครับ"`;
 }
 
-// Sanitize user input to prevent prompt injection
 function sanitizeInput(input: string): string {
-  // Remove potential prompt injection attempts
   return input
     .replace(/\[INST\]/gi, "")
     .replace(/\[\/INST\]/gi, "")
@@ -87,25 +85,30 @@ function sanitizeInput(input: string): string {
     .replace(/system:/gi, "")
     .replace(/assistant:/gi, "")
     .replace(/human:/gi, "")
-    .slice(0, 2000); // Limit message length
+    .slice(0, 2000);
 }
 
-// Filter response to ensure persona compliance
 function filterResponse(response: string): string {
   let filtered = response;
-  
-  // Replace any forbidden patterns
   for (const pattern of FORBIDDEN_PATTERNS) {
     if (pattern.test(filtered)) {
       filtered = filtered.replace(pattern, "พนักงานของ Feeldi");
     }
   }
-  
   return filtered;
 }
 
+// Convert OpenAI-style messages to Gemini contents format
+function convertToGeminiContents(messages: { role: string; content: string }[]) {
+  return messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -113,9 +116,9 @@ serve(async (req) => {
   try {
     const { messages, session_id, department = "general", survey_context } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     // Sanitize all user messages
@@ -128,64 +131,95 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(department, survey_context);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call Gemini API directly with streaming
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+
+    const response = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...sanitizedMessages,
-        ],
-        stream: true,
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: convertToGeminiContents(sanitizedMessages),
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[รู้ใจ] Gemini API error:", response.status, errorText);
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "ขออภัยค่ะ ระบบกำลังใช้งานหนาก กรุณารอสักครู่แล้วลองใหม่นะคะ" }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "ขออภัยค่ะ เกิดข้อผิดพลาดในระบบ กรุณาติดต่อเจ้าหน้าที่ค่ะ" }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      const errorText = await response.text();
-      console.error("[รู้ใจ] AI gateway error:", response.status, errorText);
       return new Response(
         JSON.stringify({ error: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่ค่ะ" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Stream the response back
-    return new Response(response.body, {
+    // Transform Gemini SSE stream to OpenAI-compatible SSE stream
+    const reader = response.body!.getReader();
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        let buffer = "";
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            let newlineIndex: number;
+            while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+              let line = buffer.slice(0, newlineIndex);
+              buffer = buffer.slice(newlineIndex + 1);
+
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (!line.startsWith("data: ") || line.trim() === "") continue;
+
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
+
+              try {
+                const geminiData = JSON.parse(jsonStr);
+                const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                  const filtered = filterResponse(text);
+                  // Convert to OpenAI-compatible SSE format
+                  const openAIChunk = {
+                    choices: [{ delta: { content: filtered }, index: 0 }],
+                  };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+                }
+              } catch {
+                // Skip unparseable lines
+              }
+            }
+          }
+
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        } catch (err) {
+          console.error("[รู้ใจ] Stream transform error:", err);
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
     console.error("[รู้ใจ] Chat error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "เกิดข้อผิดพลาด กรุณาลองใหม่ค่ะ" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
