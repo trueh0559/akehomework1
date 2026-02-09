@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import NeuralBackground from '@/components/ui/NeuralBackground';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const loginSchema = z.object({
   email: z.string().trim().email('กรุณากรอก Email ให้ถูกต้อง'),
@@ -122,6 +124,27 @@ const Login = () => {
                   </p>
                 )}
               </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!formData.email) {
+                    setErrors({ email: 'กรุณากรอก Email ก่อน' });
+                    return;
+                  }
+                  const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) {
+                    toast.error('ไม่สามารถส่งลิงก์ได้: ' + error.message);
+                  } else {
+                    toast.success('ส่งลิงก์รีเซ็ตรหัสผ่านไปที่ Email แล้ว');
+                  }
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                ลืมรหัสผ่าน?
+              </button>
             </div>
 
             <Button
