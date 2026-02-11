@@ -137,15 +137,23 @@ const SurveyPage = () => {
     setSubmitting(true);
 
     try {
+      const insertPayload: any = {
+        survey_id: survey.id,
+        respondent_name: isAnonymous ? null : name,
+        respondent_email: isAnonymous ? null : email,
+        is_anonymous: isAnonymous,
+        answers: answers,
+      };
+
+      // Include user_id if authenticated (needed for RLS SELECT after insert)
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        insertPayload.user_id = currentUser.id;
+      }
+
       const { data: responseData, error: responseError } = await supabase
         .from('survey_responses')
-        .insert({
-          survey_id: survey.id,
-          respondent_name: isAnonymous ? null : name,
-          respondent_email: isAnonymous ? null : email,
-          is_anonymous: isAnonymous,
-          answers: answers,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
