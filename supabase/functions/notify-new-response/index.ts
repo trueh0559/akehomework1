@@ -15,7 +15,7 @@ interface LowScoreItem {
 }
 
 // Score-based question types
-const SCORE_QUESTION_TYPES = ['slider_continuous', 'linear_1_5', 'emoji_visual', 'icon_rating'];
+const SCORE_QUESTION_TYPES = ["slider_continuous", "linear_1_5", "emoji_visual", "icon_rating"];
 
 // ─── LINE Push Message Helper ───
 async function sendLinePushMessage(text: string, requestId: string): Promise<boolean> {
@@ -32,7 +32,7 @@ async function sendLinePushMessage(text: string, requestId: string): Promise<boo
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         to: groupId,
@@ -64,13 +64,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { response_id } = await req.json();
-    
+
     if (!response_id) {
       console.log(`[${requestId}] No response_id provided`);
-      return new Response(
-        JSON.stringify({ success: false, message: "Missing response_id" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ success: false, message: "Missing response_id" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
     console.log(`[${requestId}] Processing response: ${response_id}`);
@@ -122,6 +122,13 @@ const handler = async (req: Request): Promise<Response> => {
     const threshold = settings.low_score_threshold || 3;
     const adminEmails: string[] = settings.admin_emails || [];
 
+    const threshold = settings.low_score_threshold || 3;
+    const adminEmails: string[] = settings.admin_emails || [];
+    const lineEnabled = settings.line_enabled ?? true;
+    const emailEnabled = settings.email_enabled ?? true;
+    const notifyOnResponse = settings.notify_on_response ?? true;
+    const notifyOnLowScore = settings.notify_on_low_score ?? true;
+
     console.log(`[${requestId}] Threshold: ${threshold}, Admin emails: ${adminEmails.length}`);
 
     // 4. Check for low scores (per question)
@@ -131,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const question of questions) {
       if (!SCORE_QUESTION_TYPES.includes(question.question_type)) continue;
       const answer = answers[question.id];
-      if (answer && typeof answer.score === 'number' && answer.score < threshold) {
+      if (answer && typeof answer.score === "number" && answer.score < threshold) {
         lowScoreItems.push({
           question_id: question.id,
           question_text: question.question_text,
@@ -146,9 +153,9 @@ const handler = async (req: Request): Promise<Response> => {
     // 5. Send Thank You email to respondent
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const emailFrom = Deno.env.get("EMAIL_FROM") || "Survey <noreply@resend.dev>";
-    
+
     let thankYouSent = false;
-    
+
     if (resendApiKey && response.respondent_email && !response.is_anonymous) {
       try {
         const { Resend } = await import("https://esm.sh/resend@2.0.0");
@@ -179,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <div class="emoji">💚</div>
                   <h2 style="margin:0 0 16px 0;color:#10b981">ได้รับข้อมูลเรียบร้อยแล้ว</h2>
                   <p style="margin:0;color:#64748b">
-                    สวัสดีคุณ ${response.respondent_name || 'ผู้ตอบแบบสอบถาม'}<br><br>
+                    สวัสดีคุณ ${response.respondent_name || "ผู้ตอบแบบสอบถาม"}<br><br>
                     ขอบคุณที่สละเวลาแบ่งปันความคิดเห็น<br>
                     ทุกคำตอบของคุณมีคุณค่าและช่วยให้เราพัฒนาบริการให้ดียิ่งขึ้น
                   </p>
@@ -209,47 +216,49 @@ const handler = async (req: Request): Promise<Response> => {
 
     // 6. Create admin notification if low scores
     if (lowScoreItems.length > 0) {
-      const { error: notificationError } = await supabase
-        .from("admin_notifications")
-        .insert({
-          type: "low_score",
-          title: `⚠️ คะแนนต่ำ - ${lowScoreItems.length} ข้อ`,
-          message: `พบคำตอบที่มีคะแนนต่ำกว่าเกณฑ์ (< ${threshold}) จำนวน ${lowScoreItems.length} ข้อ`,
-          severity: "warning",
-          payload: {
-            response_id: response_id,
-            survey_id: response.survey_id,
-            respondent_name: response.respondent_name,
-            respondent_email: response.respondent_email,
-            is_anonymous: response.is_anonymous,
-            submitted_at: response.submitted_at,
-            low_score_items: lowScoreItems,
-          },
-        });
+      const { error: notificationError } = await supabase.from("admin_notifications").insert({
+        type: "low_score",
+        title: `⚠️ คะแนนต่ำ - ${lowScoreItems.length} ข้อ`,
+        message: `พบคำตอบที่มีคะแนนต่ำกว่าเกณฑ์ (< ${threshold}) จำนวน ${lowScoreItems.length} ข้อ`,
+        severity: "warning",
+        payload: {
+          response_id: response_id,
+          survey_id: response.survey_id,
+          respondent_name: response.respondent_name,
+          respondent_email: response.respondent_email,
+          is_anonymous: response.is_anonymous,
+          submitted_at: response.submitted_at,
+          low_score_items: lowScoreItems,
+        },
+      });
 
       if (notificationError) {
         console.error(`[${requestId}] Error creating notification:`, notificationError);
       }
 
       // Send low-score alert email to admins
-      if (resendApiKey && adminEmails.length > 0) {
+      if (emailEnabled && notifyOnLowScore && resendApiKey && adminEmails.length > 0) {
         try {
           const { Resend } = await import("https://esm.sh/resend@2.0.0");
           const resend = new Resend(resendApiKey);
 
-          const respondentInfo = response.is_anonymous 
-            ? "ไม่ระบุตัวตน" 
+          const respondentInfo = response.is_anonymous
+            ? "ไม่ระบุตัวตน"
             : `${response.respondent_name || "ไม่ระบุชื่อ"} (${response.respondent_email || "ไม่ระบุอีเมล"})`;
 
-          const lowScoreHtml = lowScoreItems.map((item, idx) => `
-            <tr style="background: ${idx % 2 === 0 ? '#fff' : '#f8fafc'};">
+          const lowScoreHtml = lowScoreItems
+            .map(
+              (item, idx) => `
+            <tr style="background: ${idx % 2 === 0 ? "#fff" : "#f8fafc"};">
               <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${item.question_text}</td>
               <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
                 <span style="color: #dc2626; font-weight: bold;">${item.score}</span>
               </td>
               <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.threshold}</td>
             </tr>
-          `).join("");
+          `,
+            )
+            .join("");
 
           const emailHtml = `
             <!DOCTYPE html>
@@ -281,7 +290,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </div>
                   <h3>👤 ผู้ตอบ</h3>
                   <p>${respondentInfo}</p>
-                  <p style="color:#64748b;font-size:14px">ส่งเมื่อ: ${new Date(response.submitted_at).toLocaleString('th-TH')}</p>
+                  <p style="color:#64748b;font-size:14px">ส่งเมื่อ: ${new Date(response.submitted_at).toLocaleString("th-TH")}</p>
                   <h3>📝 รายละเอียดคะแนนต่ำ</h3>
                   <table>
                     <thead><tr><th>คำถาม</th><th style="text-align:center">คะแนน</th><th style="text-align:center">เกณฑ์</th></tr></thead>
@@ -316,12 +325,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // 7. Send LINE push message (always, regardless of low scores)
-    const respondentDisplay = response.is_anonymous
-      ? "ไม่ระบุตัวตน"
-      : (response.respondent_name || "ไม่ระบุชื่อ");
-    const emailDisplay = response.is_anonymous
-      ? "-"
-      : (response.respondent_email || "-");
+    const respondentDisplay = response.is_anonymous ? "ไม่ระบุตัวตน" : response.respondent_name || "ไม่ระบุชื่อ";
+    const emailDisplay = response.is_anonymous ? "-" : response.respondent_email || "-";
     const timeDisplay = new Date(response.submitted_at).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
 
     let lineMessage = `📋 มีคนตอบแบบสอบถามใหม่!\n━━━━━━━━━━━━━━━\n📝 แบบสอบถาม: ${surveyTitle}\n👤 ผู้ตอบ: ${respondentDisplay}\n📧 อีเมล: ${emailDisplay}\n🕐 เวลา: ${timeDisplay}`;
@@ -333,7 +338,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const lineSent = await sendLinePushMessage(lineMessage, requestId);
+    let lineSent = false;
+    if (lineEnabled && (notifyOnResponse || (notifyOnLowScore && lowScoreItems.length > 0))) {
+      lineSent = await sendLinePushMessage(lineMessage, requestId);
+    }
 
     return new Response(
       JSON.stringify({
@@ -343,15 +351,14 @@ const handler = async (req: Request): Promise<Response> => {
         line_sent: lineSent,
         low_score_items: lowScoreItems,
       }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
-
   } catch (error: any) {
     console.error(`[${requestId}] Error:`, error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 

@@ -1,21 +1,39 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Mail, AlertTriangle, CheckCircle, Loader2, Send, Settings, Sun, Moon, Image, Video, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import NeuralBackground from '@/components/ui/NeuralBackground';
-import AdminHeader from '@/components/admin/AdminHeader';
-import type { AdminSettings as AdminSettingsType, AdminNotification } from '@/types/survey';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  Mail,
+  AlertTriangle,
+  CheckCircle,
+  Loader2,
+  Send,
+  Settings,
+  Sun,
+  Moon,
+  Image,
+  Video,
+  Sparkles,
+  Bell,
+  BellOff,
+  MessageSquare,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import NeuralBackground from "@/components/ui/NeuralBackground";
+import AdminHeader from "@/components/admin/AdminHeader";
+import type { AdminSettings as AdminSettingsType, AdminNotification } from "@/types/survey";
 
 const AdminSettings = () => {
   const navigate = useNavigate();
@@ -24,20 +42,20 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
-  
+
   const [settings, setSettings] = useState<AdminSettingsType | null>(null);
-  const [newEmail, setNewEmail] = useState('');
+  const [newEmail, setNewEmail] = useState("");
   const [errors, setErrors] = useState<AdminNotification[]>([]);
-  const [bgUrl, setBgUrl] = useState(theme.background_value || '');
+  const [bgUrl, setBgUrl] = useState(theme.background_value || "");
 
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        navigate('/login');
+        navigate("/login");
         return;
       }
       if (!isAdmin) {
-        navigate('/');
+        navigate("/");
         return;
       }
       fetchSettings();
@@ -46,15 +64,11 @@ const AdminSettings = () => {
   }, [user, isAdmin, authLoading, navigate]);
 
   const fetchSettings = async () => {
-    const { data, error } = await supabase
-      .from('admin_settings')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await supabase.from("admin_settings").select("*").limit(1).maybeSingle();
 
     if (error) {
-      console.error('Error fetching settings:', error);
-      toast.error('ไม่สามารถโหลดการตั้งค่าได้');
+      console.error("Error fetching settings:", error);
+      toast.error("ไม่สามารถโหลดการตั้งค่าได้");
     } else {
       setSettings(data as AdminSettingsType);
     }
@@ -63,10 +77,10 @@ const AdminSettings = () => {
 
   const fetchRecentErrors = async () => {
     const { data, error } = await supabase
-      .from('admin_notifications')
-      .select('*')
-      .eq('type', 'system_error')
-      .order('created_at', { ascending: false })
+      .from("admin_notifications")
+      .select("*")
+      .eq("type", "system_error")
+      .order("created_at", { ascending: false })
       .limit(10);
 
     if (!error && data) {
@@ -79,37 +93,42 @@ const AdminSettings = () => {
     setSaving(true);
 
     const { error } = await supabase
-      .from('admin_settings')
+      .from("admin_settings")
       .update({
         low_score_threshold: settings.low_score_threshold,
         admin_emails: settings.admin_emails,
+        line_enabled: settings.line_enabled,
+        email_enabled: settings.email_enabled,
+        notify_on_response: settings.notify_on_response,
+        notify_on_low_score: settings.notify_on_low_score,
+        notify_on_new_chat: settings.notify_on_new_chat,
       })
-      .eq('id', settings.id);
+      .eq("id", settings.id);
 
     if (error) {
-      console.error('Error saving settings:', error);
-      toast.error('บันทึกไม่สำเร็จ');
+      console.error("Error saving settings:", error);
+      toast.error("บันทึกไม่สำเร็จ");
     } else {
-      toast.success('บันทึกการตั้งค่าเรียบร้อย');
+      toast.success("บันทึกการตั้งค่าเรียบร้อย");
     }
     setSaving(false);
   };
 
   const addEmail = () => {
     if (!newEmail || !settings) return;
-    if (!newEmail.includes('@')) {
-      toast.error('กรุณาใส่อีเมลที่ถูกต้อง');
+    if (!newEmail.includes("@")) {
+      toast.error("กรุณาใส่อีเมลที่ถูกต้อง");
       return;
     }
     if (settings.admin_emails.includes(newEmail)) {
-      toast.error('อีเมลนี้มีอยู่แล้ว');
+      toast.error("อีเมลนี้มีอยู่แล้ว");
       return;
     }
     setSettings({
       ...settings,
       admin_emails: [...settings.admin_emails, newEmail],
     });
-    setNewEmail('');
+    setNewEmail("");
   };
 
   const removeEmail = (email: string) => {
@@ -122,13 +141,13 @@ const AdminSettings = () => {
 
   const sendTestEmail = async () => {
     if (!settings?.admin_emails.length) {
-      toast.error('กรุณาเพิ่มอีเมลแอดมินก่อน');
+      toast.error("กรุณาเพิ่มอีเมลแอดมินก่อน");
       return;
     }
-    
+
     setTestingEmail(true);
     try {
-      const response = await supabase.functions.invoke('send-test-email', {
+      const response = await supabase.functions.invoke("send-test-email", {
         body: { to_email: settings.admin_emails[0] },
       });
 
@@ -136,9 +155,9 @@ const AdminSettings = () => {
         throw new Error(response.error.message);
       }
 
-      toast.success('ส่งอีเมลทดสอบสำเร็จ! ตรวจสอบ inbox ของคุณ');
+      toast.success("ส่งอีเมลทดสอบสำเร็จ! ตรวจสอบ inbox ของคุณ");
     } catch (error: any) {
-      console.error('Test email error:', error);
+      console.error("Test email error:", error);
       toast.error(`ส่งอีเมลไม่สำเร็จ: ${error.message}`);
     } finally {
       setTestingEmail(false);
@@ -148,7 +167,7 @@ const AdminSettings = () => {
 
   const handleBgUrlSave = () => {
     setTheme({ background_value: bgUrl || null });
-    toast.success('บันทึกพื้นหลังเรียบร้อย');
+    toast.success("บันทึกพื้นหลังเรียบร้อย");
   };
 
   if (authLoading || loading) {
@@ -169,11 +188,7 @@ const AdminSettings = () => {
         <AdminHeader />
 
         <main className="container py-6 px-4 max-w-3xl">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin')}
-            className="mb-4 gap-2"
-          >
+          <Button variant="ghost" onClick={() => navigate("/admin")} className="mb-4 gap-2">
             <ArrowLeft className="w-4 h-4" />
             กลับไป Dashboard
           </Button>
@@ -186,29 +201,21 @@ const AdminSettings = () => {
                   <Sparkles className="w-5 h-5" />
                   ธีมและพื้นหลัง
                 </CardTitle>
-                <CardDescription>
-                  ปรับแต่งรูปแบบการแสดงผลของแอพ
-                </CardDescription>
+                <CardDescription>ปรับแต่งรูปแบบการแสดงผลของแอพ</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Light/Dark Mode */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {theme.mode === 'dark' ? (
-                      <Moon className="w-5 h-5" />
-                    ) : (
-                      <Sun className="w-5 h-5" />
-                    )}
+                    {theme.mode === "dark" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                     <div>
-                      <Label>โหมด {theme.mode === 'dark' ? 'มืด' : 'สว่าง'}</Label>
-                      <p className="text-xs text-muted-foreground">
-                        เปลี่ยนธีมสีของแอพ
-                      </p>
+                      <Label>โหมด {theme.mode === "dark" ? "มืด" : "สว่าง"}</Label>
+                      <p className="text-xs text-muted-foreground">เปลี่ยนธีมสีของแอพ</p>
                     </div>
                   </div>
                   <Switch
-                    checked={theme.mode === 'dark'}
-                    onCheckedChange={(checked) => setTheme({ mode: checked ? 'dark' : 'light' })}
+                    checked={theme.mode === "dark"}
+                    onCheckedChange={(checked) => setTheme({ mode: checked ? "dark" : "light" })}
                   />
                 </div>
 
@@ -216,9 +223,7 @@ const AdminSettings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>แอนิเมชัน</Label>
-                    <p className="text-xs text-muted-foreground">
-                      เปิด/ปิดเอฟเฟกต์เคลื่อนไหว
-                    </p>
+                    <p className="text-xs text-muted-foreground">เปิด/ปิดเอฟเฟกต์เคลื่อนไหว</p>
                   </div>
                   <Switch
                     checked={theme.enable_motion}
@@ -234,17 +239,23 @@ const AdminSettings = () => {
                     onValueChange={(v) => setTheme({ background_type: v as any })}
                     className="grid grid-cols-3 gap-3"
                   >
-                    <label className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === 'solid' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                    <label
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === "solid" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}
+                    >
                       <RadioGroupItem value="solid" className="sr-only" />
                       <div className="w-8 h-8 rounded bg-gradient-to-br from-background to-card" />
                       <span className="text-sm">สีพื้น</span>
                     </label>
-                    <label className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === 'image' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                    <label
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === "image" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}
+                    >
                       <RadioGroupItem value="image" className="sr-only" />
                       <Image className="w-8 h-8" />
                       <span className="text-sm">รูปภาพ</span>
                     </label>
-                    <label className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === 'video' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                    <label
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border cursor-pointer transition-all ${theme.background_type === "video" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}
+                    >
                       <RadioGroupItem value="video" className="sr-only" />
                       <Video className="w-8 h-8" />
                       <span className="text-sm">วิดีโอ</span>
@@ -253,26 +264,127 @@ const AdminSettings = () => {
                 </div>
 
                 {/* Background URL */}
-                {theme.background_type !== 'solid' && (
+                {theme.background_type !== "solid" && (
                   <div className="space-y-2">
-                    <Label>
-                      URL {theme.background_type === 'image' ? 'รูปภาพ' : 'วิดีโอ'}
-                    </Label>
+                    <Label>URL {theme.background_type === "image" ? "รูปภาพ" : "วิดีโอ"}</Label>
                     <div className="flex gap-2">
                       <Input
                         value={bgUrl}
                         onChange={(e) => setBgUrl(e.target.value)}
-                        placeholder={`https://example.com/background.${theme.background_type === 'image' ? 'jpg' : 'mp4'}`}
+                        placeholder={`https://example.com/background.${theme.background_type === "image" ? "jpg" : "mp4"}`}
                       />
                       <Button onClick={handleBgUrlSave} size="sm">
                         บันทึก
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {theme.background_type === 'video' && 'วิดีโอจะเล่นแบบ muted และ loop อัตโนมัติ'}
+                      {theme.background_type === "video" && "วิดีโอจะเล่นแบบ muted และ loop อัตโนมัติ"}
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* LINE Notification Settings */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="w-5 h-5" />
+                  ตั้งค่าการแจ้งเตือน LINE
+                </CardTitle>
+                <CardDescription>จัดการการแจ้งเตือนอัตโนมัติผ่าน LINE</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>เปิด/ปิดการแจ้งเตือน LINE</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {settings?.line_enabled ? "เปิดใช้งานอยู่" : "ปิดใช้งานอยู่"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings?.line_enabled ?? true}
+                    onCheckedChange={(checked) => setSettings(settings ? { ...settings, line_enabled: checked } : null)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Email Notification Settings */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="w-5 h-5" />
+                  ตั้งค่าการแจ้งเตือน Email
+                </CardTitle>
+                <CardDescription>จัดการการแจ้งเตือนอัตโนมัติผ่าน Email</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>เปิด/ปิดการแจ้งเตือน Email</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {settings?.email_enabled ? "เปิดใช้งานอยู่" : "ปิดใช้งานอยู่"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings?.email_enabled ?? true}
+                    onCheckedChange={(checked) =>
+                      setSettings(settings ? { ...settings, email_enabled: checked } : null)
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notification Types */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  ประเภทการแจ้งเตือน
+                </CardTitle>
+                <CardDescription>เลือกประเภทการแจ้งเตือนที่ต้องการรับ</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>📋 แจ้งเตือนเมื่อมีผู้ตอบแบบสอบถาม</Label>
+                    <p className="text-xs text-muted-foreground">ส่งแจ้งเตือนทุกครั้งที่มีคนส่งแบบสอบถาม</p>
+                  </div>
+                  <Switch
+                    checked={settings?.notify_on_response ?? true}
+                    onCheckedChange={(checked) =>
+                      setSettings(settings ? { ...settings, notify_on_response: checked } : null)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>⚠️ แจ้งเตือนเมื่อได้คะแนนต่ำ</Label>
+                    <p className="text-xs text-muted-foreground">ส่งแจ้งเตือนเมื่อคะแนนต่ำกว่าเกณฑ์ที่กำหนด</p>
+                  </div>
+                  <Switch
+                    checked={settings?.notify_on_low_score ?? true}
+                    onCheckedChange={(checked) =>
+                      setSettings(settings ? { ...settings, notify_on_low_score: checked } : null)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>💬 แจ้งเตือนเมื่อมีคนทักแชท</Label>
+                    <p className="text-xs text-muted-foreground">ส่งแจ้งเตือนเมื่อมีลูกค้าส่งข้อความผ่านช่องแชท</p>
+                  </div>
+                  <Switch
+                    checked={settings?.notify_on_new_chat ?? true}
+                    onCheckedChange={(checked) =>
+                      setSettings(settings ? { ...settings, notify_on_new_chat: checked } : null)
+                    }
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -283,9 +395,7 @@ const AdminSettings = () => {
                   <Mail className="w-5 h-5" />
                   อีเมลแอดมิน
                 </CardTitle>
-                <CardDescription>
-                  อีเมลที่จะได้รับการแจ้งเตือนเมื่อมีคะแนนต่ำ
-                </CardDescription>
+                <CardDescription>อีเมลที่จะได้รับการแจ้งเตือนเมื่อมีคะแนนต่ำ</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
@@ -294,7 +404,7 @@ const AdminSettings = () => {
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                     placeholder="admin@example.com"
-                    onKeyDown={(e) => e.key === 'Enter' && addEmail()}
+                    onKeyDown={(e) => e.key === "Enter" && addEmail()}
                   />
                   <Button onClick={addEmail} size="icon">
                     <Plus className="w-4 h-4" />
@@ -321,11 +431,7 @@ const AdminSettings = () => {
                   disabled={testingEmail || !settings?.admin_emails.length}
                   className="gap-2"
                 >
-                  {testingEmail ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
+                  {testingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   ส่งอีเมลทดสอบ
                 </Button>
               </CardContent>
@@ -338,17 +444,13 @@ const AdminSettings = () => {
                   <Settings className="w-5 h-5" />
                   เกณฑ์คะแนนต่ำ
                 </CardTitle>
-                <CardDescription>
-                  คะแนนที่ต่ำกว่าเกณฑ์นี้จะถูกแจ้งเตือน (ตรวจสอบรายข้อ)
-                </CardDescription>
+                <CardDescription>คะแนนที่ต่ำกว่าเกณฑ์นี้จะถูกแจ้งเตือน (ตรวจสอบรายข้อ)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label>Threshold</Label>
-                    <span className="text-2xl font-bold text-primary">
-                      {settings?.low_score_threshold ?? 3}
-                    </span>
+                    <span className="text-2xl font-bold text-primary">{settings?.low_score_threshold ?? 3}</span>
                   </div>
                   <Slider
                     min={1}
@@ -368,11 +470,7 @@ const AdminSettings = () => {
 
             {/* Save Button */}
             <Button onClick={saveSettings} disabled={saving} className="w-full gap-2">
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle className="w-4 h-4" />
-              )}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
               บันทึกการตั้งค่า
             </Button>
 
@@ -392,7 +490,7 @@ const AdminSettings = () => {
                         <p className="font-medium">{error.title}</p>
                         <p className="text-muted-foreground text-xs mt-1">{error.message}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(error.created_at).toLocaleString('th-TH')}
+                          {new Date(error.created_at).toLocaleString("th-TH")}
                         </p>
                       </div>
                     ))}

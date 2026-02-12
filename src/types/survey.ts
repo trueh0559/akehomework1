@@ -82,6 +82,12 @@ export interface AdminSettings {
   low_score_threshold: number;
   admin_emails: string[];
   created_at: string;
+  // Notification toggles
+  line_enabled: boolean;
+  email_enabled: boolean;
+  notify_on_response: boolean;
+  notify_on_low_score: boolean;
+  notify_on_new_chat: boolean;
 }
 
 export interface AdminNotification {
