@@ -1,73 +1,148 @@
-# Welcome to your Lovable project
+# Feeldi – Feedback that feels right
 
-## Project info
+ระบบสำรวจความพึงพอใจแบบไดนามิกที่เน้นการวัดความรู้สึก พร้อม AI Chatbot, ระบบสมาชิก/คูปอง และ Admin Dashboard
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Tech Stack
 
-There are several ways of editing your application.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion, Recharts |
+| Backend | Lovable Cloud (Supabase) – Database, Auth, Edge Functions |
+| AI | Google Gemini 2.0 Flash (Direct API) |
+| Email | Resend API |
+| Messaging | LINE Messaging API |
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## ฟีเจอร์ทั้งหมด (7 ฟีเจอร์หลัก)
 
-Changes made via Lovable will be committed automatically to this repo.
+### 1. ระบบแบบสำรวจไดนามิก (Dynamic Survey)
 
-**Use your preferred IDE**
+- รองรับ 10 ประเภทคำถาม: slider, linear 1-5, emoji, single/multi choice, icon rating, short/long text, face slider, icon size scale
+- Multi-survey: เปิดหลายแบบสำรวจพร้อมกัน
+- ตั้งเวลาเปิด-ปิดอัตโนมัติ (Scheduling)
+- Auto-Save Draft (localStorage + Debounce 500ms)
+- ตอบแบบไม่ระบุตัวตน (Anonymous)
+- QR Code สำหรับแชร์ลิงก์
+- **Secrets**: ไม่มี
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 2. AI Chatbot "รู้ใจ" (Roo-Jai)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- บุคลิกเป็นพนักงานจริง พร้อม Persona Guard ป้องกัน Prompt Injection
+- รองรับ 5 แผนก: แบบสำรวจ, ประกัน, อสังหาฯ, บริการลูกค้า, ทั่วไป
+- Streaming response (SSE)
+- วิเคราะห์ Sentiment อัตโนมัติหลังจบสนทนา (analyze-chat)
+- เก็บข้อมูล Lead (ชื่อ, เบอร์, อีเมล)
+- แจ้งเตือนแอดมินทันทีเมื่อลูกค้าไม่พอใจ
+- **Secrets**: `GEMINI_API_KEY`
 
-Follow these steps:
+### 3. ระบบแจ้งเตือนอัตโนมัติ (Notifications)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- แจ้งเตือนผ่าน LINE Group Bot (Messaging API)
+- แจ้งเตือนผ่าน Email (Resend API)
+- เปิด/ปิดช่องทางได้ (LINE, Email)
+- เปิด/ปิดประเภทได้ (ตอบแบบสอบถาม, คะแนนต่ำ, แชทใหม่)
+- กระดิ่งแจ้งเตือน In-App แบบ Real-time
+- ตรวจจับคะแนนต่ำรายข้อ (Per-question low score)
+- **Secrets**: `RESEND_API_KEY`, `EMAIL_FROM`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_GROUP_ID`
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 4. AI สร้างคำถามอัตโนมัติ (AI Question Generator)
 
-# Step 3: Install the necessary dependencies.
-npm i
+- สร้างคำถามจากบริบทที่ระบุ
+- เลือกโทน (เป็นมิตร, สบายๆ, ทางการ)
+- เลือกประเภทคำถามที่อนุญาต
+- Admin-only (ตรวจสอบ RBAC)
+- **Secrets**: `GEMINI_API_KEY`
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### 5. ระบบสมาชิกและคูปอง (Membership & E-Coupon)
 
-**Edit a file directly in GitHub**
+- ล็อกอินด้วย Email/Password หรือ Google OAuth
+- รับคูปองอัตโนมัติหลังทำแบบสำรวจ
+- หน้า "คูปองของฉัน" (`/my-coupons`) พร้อม QR Code
+- Admin จัดการแคมเปญคูปอง (`/admin/coupons`)
+- **Secrets**: ไม่มี (ใช้ built-in Auth)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 6. Admin Dashboard
 
-**Use GitHub Codespaces**
+- Dashboard วิเคราะห์ข้อมูล (Distribution/Histogram, Median)
+- Survey Builder + Import/Export JSON
+- จัดการแชทและดู Sentiment Analysis
+- จัดการคูปองและบันทึก Redeem
+- สิทธิ์เฉพาะ Role "admin" (RBAC ผ่าน user_roles)
+- **Secrets**: ไม่มี
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 7. ระบบธีมและ UI Settings
 
-## What technologies are used for this project?
+- โหมดมืด/สว่าง
+- พื้นหลังแบบ สีพื้น/รูปภาพ/วิดีโอ
+- เปิด/ปิดแอนิเมชัน
+- บันทึกลง Database (ui_settings)
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Secrets / API Keys ที่ต้องตั้งค่า
 
-## How can I deploy this project?
+| Secret | ใช้กับฟีเจอร์ | หมายเหตุ |
+|--------|-------------|----------|
+| `GEMINI_API_KEY` | AI Chatbot, AI Question Generator | ต้องเปิด Billing ใน Google Cloud |
+| `RESEND_API_KEY` | Email Notifications | จาก resend.com |
+| `EMAIL_FROM` | Email Notifications | ต้องเป็น Verified Domain เช่น `Feeldi <noreply@yourdomain.com>` |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE Notifications | จาก LINE Developers Console |
+| `LINE_GROUP_ID` | LINE Notifications | Group ID ของกลุ่มที่ต้องการรับแจ้งเตือน |
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+> `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ถูกตั้งค่าอัตโนมัติโดย Lovable Cloud
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## Database Schema
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+ตารางหลัก 13 ตาราง:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| ตาราง | คำอธิบาย |
+|-------|---------|
+| `surveys` | ข้อมูลแบบสำรวจ |
+| `survey_questions` | คำถามในแต่ละแบบสำรวจ |
+| `survey_responses` | คำตอบของผู้ตอบแบบสำรวจ |
+| `chat_sessions` | เซสชันการแชท |
+| `chat_messages` | ข้อความในแชท |
+| `coupon_campaigns` | แคมเปญคูปอง |
+| `coupons` | คูปองที่ออกให้ผู้ใช้ |
+| `profiles` | โปรไฟล์ผู้ใช้ |
+| `user_roles` | สิทธิ์ผู้ใช้ (admin/user) |
+| `admin_settings` | การตั้งค่าระบบ |
+| `admin_notifications` | การแจ้งเตือน In-App |
+| `ui_settings` | ตั้งค่าธีม UI |
+| `responses` | คำตอบแบบสำรวจ (legacy) |
+
+---
+
+## Edge Functions
+
+| Function | คำอธิบาย |
+|----------|---------|
+| `chat` | AI Chatbot รู้ใจ (Streaming SSE) |
+| `analyze-chat` | วิเคราะห์ Sentiment หลังจบแชท |
+| `ai-generate-questions` | AI สร้างคำถาม (Admin-only) |
+| `notify-new-response` | แจ้งเตือนเมื่อมีคำตอบใหม่ |
+| `send-test-email` | ทดสอบระบบอีเมล |
+
+---
+
+## Routes / Pages
+
+| Route | หน้า | สิทธิ์ |
+|-------|------|--------|
+| `/` | หน้าแรก (รายการแบบสำรวจ) | Public |
+| `/survey/:id` | ตอบแบบสำรวจ | Public |
+| `/login` | เข้าสู่ระบบ | Public |
+| `/register` | สมัครสมาชิก | Public |
+| `/reset-password` | รีเซ็ตรหัสผ่าน | Public |
+| `/my-coupons` | คูปองของฉัน | Authenticated |
+| `/admin` | Dashboard | Admin |
+| `/admin/surveys` | จัดการแบบสำรวจ | Admin |
+| `/admin/surveys/:id/edit` | แก้ไขแบบสำรวจ | Admin |
+| `/admin/chats` | จัดการแชท | Admin |
+| `/admin/coupons` | จัดการคูปอง | Admin |
+| `/admin/settings` | ตั้งค่าระบบ | Admin |
