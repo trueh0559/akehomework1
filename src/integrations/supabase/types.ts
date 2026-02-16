@@ -51,20 +51,35 @@ export type Database = {
         Row: {
           admin_emails: string[]
           created_at: string | null
+          email_enabled: boolean | null
           id: string
+          line_enabled: boolean | null
           low_score_threshold: number | null
+          notify_on_low_score: boolean | null
+          notify_on_new_chat: boolean | null
+          notify_on_response: boolean | null
         }
         Insert: {
           admin_emails?: string[]
           created_at?: string | null
+          email_enabled?: boolean | null
           id?: string
+          line_enabled?: boolean | null
           low_score_threshold?: number | null
+          notify_on_low_score?: boolean | null
+          notify_on_new_chat?: boolean | null
+          notify_on_response?: boolean | null
         }
         Update: {
           admin_emails?: string[]
           created_at?: string | null
+          email_enabled?: boolean | null
           id?: string
+          line_enabled?: boolean | null
           low_score_threshold?: number | null
+          notify_on_low_score?: boolean | null
+          notify_on_new_chat?: boolean | null
+          notify_on_response?: boolean | null
         }
         Relationships: []
       }
